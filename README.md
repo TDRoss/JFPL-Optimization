@@ -4,4 +4,4 @@ Currently a Julia implementaiton of optimization tutorials from (https://github.
 
 Tutorials require a data set (e.g. fplreview).
 
-Tutorials are implemented using Pluto.jl
+Tutorials are implemented (and best viewed) using Pluto.jl
