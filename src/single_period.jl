@@ -1,4 +1,4 @@
-using CSV, DataFrames, JuMP, SCIP, HTTP, JSON, CUDA
+using CSV, DataFrames, JuMP, SCIP, HTTP, JSON, Profile
 
 function get_data()
 	#Data
@@ -69,15 +69,15 @@ end
 
 
 # if abspath(PROGRAM_FILE) == @__FILE__
-	t = @elapsed begin
+t = @elapsed begin
 	budget_range = 80:5:121
 	merged_data, team_data, type_data, next_gw = get_data()
 	results = DataFrame(budget=[], total_xP=[]);
 	Threads.@threads for budget in budget_range
-		r = solve_single_period_fpl(merged_data, team_data, type_data, next_gw, budget)
+		r =  solve_single_period_fpl(merged_data, team_data, type_data, next_gw, budget)
 		push!(results,[budget,r])
 	end
 	println(results)
-	end
-	println("time in loop: $t seconds")
+end
+	println(t)
 # end
