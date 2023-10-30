@@ -1,0 +1,61 @@
+gameweek,name,pos,type,team,price,xP,lineup,captain,vicecap,transfer_in,transfer_out
+7,Pickford,G,1,Everton,4.4,4.15,1,0,0,0,0
+7,Chilwell,D,2,Chelsea,5.6,1.23,1,0,0,0,0
+7,Estupiñan,D,2,Brighton,5.3,2.79,1,0,0,0,0
+7,Schär,D,2,Newcastle,5.0,4.53,1,0,0,0,0
+7,Saka,M,3,Arsenal,8.7,4.11,1,0,0,0,0
+7,Sterling,M,3,Chelsea,7.1,4.47,1,0,0,0,0
+7,Mbeumo,M,3,Brentford,6.9,4.78,1,0,0,0,0
+7,B.Fernandes,M,3,Man Utd,8.4,5.38,1,0,0,0,0
+7,Rashford,M,3,Man Utd,8.9,5.43,1,0,1,0,0
+7,J.Alvarez,F,4,Man City,7.0,4.97,1,0,0,0,0
+7,Haaland,F,4,Man City,14.1,6.99,1,1,0,0,0
+7,Turner,G,1,Nott'm Forest,4.0,2.22,0,0,0,0,0
+7,Henry,D,2,Brentford,4.5,0.0,0,0,0,0,0
+7,Baldock,D,2,Sheffield Utd,3.9,0.54,0,0,0,0,0
+7,João Pedro,F,4,Brighton,5.4,3.14,0,0,0,0,0
+8,Pickford,G,1,Everton,4.4,3.66,1,0,0,0,0
+8,Estupiñan,D,2,Brighton,5.3,2.54,1,0,0,0,0
+8,Schär,D,2,Newcastle,5.0,2.94,1,0,0,0,0
+8,Cash,D,2,Aston Villa,4.8,3.43,1,0,0,0,0
+8,Mbeumo,M,3,Brentford,6.9,3.86,1,0,0,0,0
+8,Saka,M,3,Arsenal,8.7,4.06,1,0,0,0,0
+8,Sterling,M,3,Chelsea,7.1,4.3,1,0,0,0,0
+8,B.Fernandes,M,3,Man Utd,8.4,5.25,1,0,1,0,0
+8,Rashford,M,3,Man Utd,8.9,5.3,1,1,0,0,0
+8,J.Alvarez,F,4,Man City,7.0,3.77,1,0,0,0,0
+8,Haaland,F,4,Man City,14.1,5.0,1,0,0,0,0
+8,Turner,G,1,Nott'm Forest,4.0,1.71,0,0,0,0,0
+8,Henry,D,2,Brentford,4.5,0.0,0,0,0,0,0
+8,Baldock,D,2,Sheffield Utd,3.9,1.29,0,0,0,0,0
+8,João Pedro,F,4,Brighton,5.4,2.94,0,0,0,0,0
+9,Pickford,G,1,Everton,4.4,2.95,1,0,0,0,0
+9,Cash,D,2,Aston Villa,4.8,3.43,1,0,0,0,0
+9,Schär,D,2,Newcastle,5.0,3.96,1,0,0,0,0
+9,Robertson,D,2,Liverpool,6.6,4.44,1,0,0,0,0
+9,Sterling,M,3,Chelsea,7.1,3.75,1,0,0,0,0
+9,Saka,M,3,Arsenal,8.7,4.0,1,0,0,0,0
+9,B.Fernandes,M,3,Man Utd,8.4,5.33,1,0,0,0,0
+9,Rashford,M,3,Man Utd,8.9,5.46,1,0,0,0,0
+9,Mbeumo,M,3,Brentford,6.9,5.5,1,0,1,0,0
+9,J.Alvarez,F,4,Man City,7.0,4.57,1,0,0,0,0
+9,Haaland,F,4,Man City,14.1,6.76,1,1,0,0,0
+9,Turner,G,1,Nott'm Forest,4.0,1.67,0,0,0,0,0
+9,Henry,D,2,Brentford,4.5,0.0,0,0,0,0,0
+9,Baldock,D,2,Sheffield Utd,3.9,1.89,0,0,0,0,0
+9,João Pedro,F,4,Brighton,5.4,2.1,0,0,0,0,0
+10,Pickford,G,1,Everton,4.4,3.24,1,0,0,0,0
+10,Schär,D,2,Newcastle,5.0,3.43,1,0,0,0,0
+10,Cash,D,2,Aston Villa,4.8,4.45,1,0,0,0,0
+10,Robertson,D,2,Liverpool,6.6,4.54,1,0,0,0,0
+10,Mbeumo,M,3,Brentford,6.9,3.71,1,0,0,0,0
+10,Rashford,M,3,Man Utd,8.9,3.85,1,0,0,0,0
+10,Sterling,M,3,Chelsea,7.1,4.35,1,0,0,0,0
+10,Ødegaard,M,3,Arsenal,8.5,5.84,1,0,1,0,0
+10,Saka,M,3,Arsenal,8.7,6.17,1,1,0,0,0
+10,J.Alvarez,F,4,Man City,7.0,3.64,1,0,0,0,0
+10,Haaland,F,4,Man City,14.1,5.25,1,0,0,0,0
+10,Turner,G,1,Nott'm Forest,4.0,1.02,0,0,0,0,0
+10,Henry,D,2,Brentford,4.5,0.0,0,0,0,0,0
+10,Baldock,D,2,Sheffield Utd,3.9,1.18,0,0,0,0,0
+10,João Pedro,F,4,Brighton,5.4,3.38,0,0,0,0,0
