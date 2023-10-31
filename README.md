@@ -16,13 +16,13 @@ The algorithm relies on [JuMP](https://github.com/jump-dev/JuMP.jl) to easily sw
 - Navigate to it
   `cd JFPL-Optimization/run`
 
-- Launch Julia and enter the package REPL mode by pressing ]. Activate the project:
+- Launch Julia and enter the package REPL mode by pressing \']\'. Activate the project:
   `activate .`
 
 - Install dependencies (this can take a while)
   `instantiate`
 
-- Download FPLReview projections and save it in the directory `JFPL-Optimization/data/` and rename the projections file to `fplreview.csv`
+- Download FPLReview projections and save it in the directory `/data` and rename the projections file to `fplreview.csv`
 
 - Log in FPL from your browser and open
   https://fantasy.premierleague.com/api/my-team/MY_TEAM_ID/
