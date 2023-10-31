@@ -184,7 +184,8 @@ function prep_data(my_data::Dict{String, Any}, options::Dict{String, Any})
     
 
     if get(options, "randomized", false)
-        rng = MersenneTwister(get(options, "seed", Random.seed!()))
+        barf()
+        rng = MersenneTwister(get(options, "seed", nothing))
         gws = gw:min(38, gw + horizon - 1)
         for w in gws
             column_pts = Symbol("$(w)_Pts")

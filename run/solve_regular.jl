@@ -28,8 +28,6 @@ function solve_regular(runtime_options::Union{Dict, Nothing}=nothing)
     args = parse_args(ARGS, s)
     options = merge(options, args)
 
-
-
     if !isnothing(runtime_options)
         merge!(options, runtime_options)
     end
@@ -177,8 +175,6 @@ function get_fplteam_link(options, response)
     end
 end
 
-function main()
+if abspath(PROGRAM_FILE) == @__FILE__    
     solve_regular()
 end
-
-main()
