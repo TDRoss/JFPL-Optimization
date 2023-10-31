@@ -27,7 +27,7 @@ The algorithm relies on [JuMP](https://github.com/jump-dev/JuMP.jl) to easily sw
 - Log in FPL from your browser and open
   https://fantasy.premierleague.com/api/my-team/MY_TEAM_ID/
   after replacing `MY_TEAM_ID` with your team id.
-  Copy the content of the page into `data\team.json` file, by creating one.
+  Copy the content of the page into `data/team.json` file, by creating one.
 
 Note: the CBC and SCIP solvers are installed with this project. If you would like to try other solvers, please see the [documentation](https://jump.dev/JuMP.jl/stable/packages/solvers/) on what is available and their installation dependencies.
 
