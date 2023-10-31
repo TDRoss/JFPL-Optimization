@@ -155,26 +155,25 @@ From the `/run` directory
 
 ## Sensitivity Analysis
 
-If you want to run sensitivity analysis, instead of running `solve_regular.jl`,
+If you want to run sensitivity analysis:
 
-0. Make sure that `/data/results` directory is empty (doesn't include old files)
+0\. Make sure that `/data/results` directory is empty (doesn't include old files)
 
-1. Go to the `/run` directory and enter 
-   
-	``` shell
-	julia --project=. simulations.jl
-	```
+1\. Go to the `/run` directory and enter:
 
-	When called from the terminal, it will ask you to give number of runs (how many times you want to solve), and number of parallel jobs.
-	If you are not sure, use 1 for parallel jobs.
+```shell
+ julia --project=. simulations.jl
+```
 
-	You can also pass parameters from the command line as
+When called from the terminal, it will ask you to give the number of runs (how many times you want to solve) and the number of parallel jobs. If you are not sure, use 1 for parallel jobs.
 
-	``` shell
-	julia --project=. simulations.jl --no 10 --parallel 4
-	```
+You can also pass parameters from the command line as:
 
-2. After optimizations are completed, run
+  ```shell
+    julia --project=. simulations.jl --no 10 --parallel 4
+  ```
+
+2\. After optimizations are completed, run:
 
   ``` shell
   julia --project=. sensitivity.jl
