@@ -1,6 +1,6 @@
 using Distributed
 using ArgParse
-include("solve_regular.jl")
+
 
 
 
@@ -21,28 +21,23 @@ function run_sensitivity(options = nothing)
     runs = parse(Int,runs)
     processes = parse(Int, processes)
     all_jobs = [Dict("run_no" => string(i+1), "randomized" => true) for i in 1:runs]
-
+    if length(workers()) > 1
+        rmprocs(workers())
+    end
     addprocs(processes)
-    
+    @everywhere include("solve_regular.jl")
     start_time = time()
+    
     # Parallel execution
-    results = @distributed for job in all_jobs
+   @elapsed @sync @distributed for job in all_jobs
         solve_regular(job)
     end
     end_time = time()
 
     println("\nTotal time taken is ", (end_time - start_time) / 60, " minutes")
-        
-    #     # for i in 1:runs
-    #     # x = zeros(10)
-    #     @sync for i in 1:runs
-    #         @async begin
-    # # Parallel execution
-    # results = @distributed (vcat) for job in all_jobs
-    #     solve_regular(job)
-    # end
-    #         end
-    
+    if length(workers()) > 1
+        rmprocs(workers())
+    end    
     
 end
 

@@ -1,4 +1,4 @@
-using CSV, DataFrames, JuMP, Cbc, Gurobi, HTTP, JSON, Profile, Statistics
+using CSV, DataFrames, JuMP, Cbc, HTTP, JSON, Profile, Statistics
 include("data_parser.jl")
 
 
@@ -184,7 +184,6 @@ function prep_data(my_data::Dict{String, Any}, options::Dict{String, Any})
     
 
     if get(options, "randomized", false)
-        barf()
         rng = MersenneTwister(get(options, "seed", nothing))
         gws = gw:min(38, gw + horizon - 1)
         for w in gws
@@ -314,7 +313,7 @@ function solve_multi_period_fpl(data, options)
 
 
     # Model
-    model = Model(Gurobi.Optimizer)
+    model = Model(Cbc.Optimizer)
 
     # Variables
     @variable(model, squad[players, all_gw], Bin)
