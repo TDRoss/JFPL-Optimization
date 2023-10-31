@@ -32,10 +32,6 @@ function solve_regular(runtime_options::Union{Dict, Nothing}=nothing)
         merge!(options, runtime_options)
     end
 
-    if !isempty(get(options, "cbc_path", "")) && !isnothing(get(options, "cbc_path", nothing))
-        ENV["PATH"] *= ";" * get(options, "cbc_path", "")
-    end
-
     if get(options, "preseason", false)
         my_data = Dict(
             "picks" => [],
