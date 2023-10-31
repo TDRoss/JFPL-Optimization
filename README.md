@@ -40,56 +40,57 @@ Note: the CBC and SCIP solvers are installed with this project. If you would lik
 - Edit content of `data/regular_settings.json` file
 
   ``` json
-    {
-        "horizon": 5,
-        "ft_value": 1.5,
-        "ft_use_penalty": 0,
-        "itb_value": 0.2,
-        "itb_loss_per_transfer": 0,
-        "decay_base": 0.84,
-        "no_future_transfer": true,
-        "no_transfer_last_gws": 0,
-        "have_2ft_in_gws": [],
-        "randomized": false,
-        "xmin_lb": 2,
-        "ev_per_price_cutoff": 20,
-        "bench_weights": {"0": 0.03, "1": 0.21, "2": 0.06, "3": 0.003},
-        "banned": [],
-        "locked": [],
-        "future_transfer_limit": null,
-        "no_transfer_gws": [],
-        "booked_transfers": [],
-        "only_booked_transfers": false,
-        "use_wc": null,
-        "use_bb": null,
-        "use_fh": null,
-        "chip_limits": {"bb": 0, "wc": 0, "fh": 0, "tc": 0},
-        "no_chip_gws": [],
-        "allowed_chip_gws": {"bb": [], "wc": [], "fh": [], "tc": []},
-        "num_transfers": null,
-        "hit_limit": null,
-        "preseason": false,
-        "no_trs_except_wc": false,
-        "no_opposing_play": false,
-        "pick_prices": {"G": "", "D": "", "M": "", "F": ""},
-        "no_gk_rotation_after": null,
-        "iteration": 1,
-        "iteration_criteria": "this_gw_transfer_in",
-        "iteration_target": [],
-        "datasource" : "review",
-        "data_weights": {"review": 50, "review-odds": 25, "mikkel": 15, "kiwi": 10},
-        "export_data": "final.csv",
-        "team_data": "json",
-        "team_id": null
-    }
+{
+    "horizon": 6,
+    "decay_base": 0.84,
+    "ft_value": 0.8,
+    "ft_use_penalty": 1,
+    "itb_value": 0.08,
+    "itb_loss_per_transfer": 0,
+    "no_future_transfer": false,
+    "no_transfer_last_gws": null,
+    "have_2ft_in_gws": [],
+    "randomized": false,
+    "xmin_lb": 2,
+    "ev_per_price_cutoff": 20,
+    "banned": [],
+    "locked": [],
+    "keep": [],
+    "single_solve": false,
+    "num_transfers": null,
+    "hit_limit": null,
+    "use_wc": null,
+    "use_bb": null,
+    "use_fh": null,
+    "chip_limits": {"bb": 0, "wc": 0, "fh": 0, "tc": 0},
+    "no_chip_gws": [],
+    "allowed_chip_gws": {"bb": [], "wc": [], "fh": [], "tc": []},
+    "future_transfer_limit": null,
+    "no_transfer_gws": [],
+    "booked_transfers": [],
+    "only_booked_transfers": false,
+    "no_trs_except_wc": false,
+    "preseason": false,
+    "no_opposing_play": false,
+    "pick_prices": {"G": "", "D": "", "M": "", "F": ""},
+    "no_gk_rotation_after": null,
+    "iteration": 1,
+    "iteration_criteria": "this_gw_transfer_in",
+    "iteration_target": [],
+    "datasource" : "review",
+    "data_weights": {"review": 40, "review-odds": 30, "mikkel": 30, "kiwi": 0},
+    "export_data": "final.csv",
+    "team_data": "json",
+    "team_id": null
+}
   ```
 
   - `horizon`: length of planning horizon
+  - `decay_base`: value assigned to decay rate of expected points
   - `ft_value`: value assigned to the extra free transfer
   - `ft_use_penalty`: penalty on objective function when an FT is used
   - `itb_value`: value assigned to having 1.0 extra budget
   - `itb_loss_per_transfer`: reduction in ITB amount per scheduled transfers in future
-  - `decay_base`: value assigned to decay rate of expected points
   - `no_future_transfer`: `true` or `false` whether you want to plan future transfers or not
   - `no_transfer_last_gws`: the number of gws at the end of the period you want to ban transfers
   - `have_2ft_in_gws`: list of GWs where you want to have 2 FTs, for example  
@@ -146,32 +147,32 @@ Note: the CBC and SCIP solvers are installed with this project. If you would lik
 
 - Run the multi-period optimization
 From the `/run` directory
-  ``` shell
-  julia --project=.  solve_regular.jl
-  ```
+	``` shell
+	julia --project=.  solve_regular.jl
+	```
 
 - Find the optimal plans under `/data/results` directory with timestamp
 
 ## Sensitivity Analysis
 
-If you want to run sensitivity analysis, instead of running `solve_regular.py`,
+If you want to run sensitivity analysis, instead of running `solve_regular.jl`,
 
 0. Make sure that `/data/results` directory is empty (doesn't include old files)
 
 1. Go to the `/run` directory and enter 
    
-   ``` shell
-   julia --project=. simulations.jl
-   ```
+	``` shell
+	julia --project=. simulations.jl
+	```
 
-   When called from the terminal, it will ask you to give number of runs (how many times you want to solve), and number of parallel jobs.
-   If you are not sure, use 1 for parallel jobs.
+	When called from the terminal, it will ask you to give number of runs (how many times you want to solve), and number of parallel jobs.
+	If you are not sure, use 1 for parallel jobs.
 
-   You can also pass parameters from the command line as
+	You can also pass parameters from the command line as
 
-   ``` shell
-   julia --project=. simulations.jl --no 10 --parallel 4
-   ```
+	``` shell
+	julia --project=. simulations.jl --no 10 --parallel 4
+	```
 
 2. After optimizations are completed, run
 
