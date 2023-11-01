@@ -11,16 +11,21 @@ The algorithm relies on [JuMP](https://github.com/jump-dev/JuMP.jl) to easily sw
 ## Installation
 
 - Clone the repository
-  `git clone https://github.com/TDRoss/JFPL-Optimization JFPL-Optimization`
-
-- Navigate to it
-  `cd JFPL-Optimization/run`
-
-- Launch Julia and enter the package REPL mode by pressing \']\'. Activate the project:
-  `activate .`
-
+```shell
+git clone https://github.com/TDRoss/JFPL-Optimization JFPL-Optimization
+```
+- Navigate to the run directory
+```shell
+cd JFPL-Optimization/run
+```
+- Launch Julia then enter the package REPL mode by pressing \']\'. Activate the project environment
+```julia
+activate .
+```
 - Install dependencies (this can take a while)
-  `instantiate`
+```julia
+instantiate
+```
 
 - Download FPLReview projections and save it in the directory `/data` and rename the projections file to `fplreview.csv`
 
@@ -146,7 +151,7 @@ Note: the CBC and SCIP solvers are installed with this project. If you would lik
   - `team_id`: the team_id to optimise for. Requires `team_data` to be set to `ID`
 
 - Run the multi-period optimization
-From the `/run` directory
+From the bash command line in the `/run` directory
 	``` shell
 	julia --project=.  solve_regular.jl
 	```
@@ -162,7 +167,7 @@ If you want to run sensitivity analysis:
 1\. Go to the `/run` directory and enter:
 
 ```shell
- julia --project=. simulations.jl
+julia --project=. simulations.jl
 ```
 
 When called from the terminal, it will ask you to give the number of runs (how many times you want to solve) and the number of parallel jobs. If you are not sure, use 1 for parallel jobs.
@@ -170,7 +175,7 @@ When called from the terminal, it will ask you to give the number of runs (how m
 You can also pass parameters from the command line as:
 
   ```shell
-    julia --project=. simulations.jl --no 10 --parallel 4
+  julia --project=. simulations.jl --no 10 --parallel 4
   ```
 
 2\. After optimizations are completed, run:
