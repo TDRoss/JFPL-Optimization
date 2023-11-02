@@ -103,7 +103,7 @@ Note: the CBC and SCIP solvers are installed with this project. If you would lik
   - `randomized`: `true` or `false` whether you would like to add random noise to EV
   - `xmin_lb`: cut-off for dropping players below this many minutes expectation
   - `ev_per_price_cutoff`: cut-off percentile for dropping players based on total EV per price (e.g. `20` means drop players below 20% percentile)
-  - `bench_weights`: percentage weights in objective for bench players (gk and 3 outfield)
+  - `bench_weights`: percentage weights in objective for bench players (gk and 3 outfield). Example: {"0":0.01,"1":0.3,"2":0.1,"3":0.05},
   - `banned`: list of banned player IDs
   - `locked`: list of player IDs to always have during the horizon (e.g. `233` for Salah)
   - `future_transfer_limit`: upper bound how many transfers are allowed in future GWs
