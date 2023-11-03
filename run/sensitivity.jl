@@ -44,10 +44,16 @@ function read_sensitivity(options)
 
         buy_sum = combine(groupby(DataFrame(player=buys), :player), nrow => :PSB)
         sell_sum = combine(groupby(DataFrame(player=sells), :player), nrow => :PSB)
-
         buy_sum[!, :PSB] = ["$(round(buy_sum[x, :PSB] / no_plans * 100))%" for x in 1:nrow(buy_sum)]
         sell_sum[!, :PSB] = ["$(round(sell_sum[x, :PSB] / no_plans * 100))%" for x in 1:nrow(sell_sum)]
+        buy_sum.PSB_numeric = parse.(Float64, replace.(buy_sum.PSB, "%" => "")) / 100
+        sell_sum.PSB_numeric = parse.(Float64, replace.(sell_sum.PSB, "%" => "")) / 100
+        sort!(buy_sum, order(:PSB_numeric, rev=true))
+        sort!(sell_sum, order(:PSB_numeric, rev=true))
+        select!(buy_sum, Not(:PSB_numeric))
+        select!(sell_sum, Not(:PSB_numeric))
 
+ 
         println("Buy:")
         println(join([join(row, "  ") for row in eachrow(buy_sum)], "\n"))
         println()
