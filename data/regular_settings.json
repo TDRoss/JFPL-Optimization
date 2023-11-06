@@ -1,5 +1,5 @@
 {
-    "horizon": 6,
+    "horizon": 8,
     "decay_base": 0.84,
     "ft_value": 0.8,
     "ft_use_penalty": 1,

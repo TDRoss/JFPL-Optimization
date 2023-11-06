@@ -498,9 +498,10 @@ function solve_multi_period_fpl(data, options)
         @constraint(model, sum(penalized_transfers[w] for w in gameweeks) <= options["hit_limit"])
     end
 
-    if ~isnothing(options["use_wc"])
-        use_wc_val = get(options, "use_wc", nothing)
-        @constraint(model, sum(transfer_in[p, w] for p in players for w in gameweeks if w > next_gw && w != use_wc_val) <= options["future_transfer_limit"])
+    if ~isnothing(options["future_transfer_limit"])
+        @constraint(model, 
+            sum(transfer_in[p,w] for p in players for w in gameweeks if w > next_gw && w != get(options, "use_wc", 0)) <= options["future_transfer_limit"]
+        )
     end
 
     if haskey(options, "no_transfer_gws")
