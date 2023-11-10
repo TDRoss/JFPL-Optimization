@@ -1,4 +1,4 @@
-using CSV, DataFrames, JuMP, Cbc, HTTP, JSON, Profile, Statistics
+using CSV, DataFrames, JuMP, HiGHS, HTTP, JSON, Profile, Statistics
 include("data_parser.jl")
 
 
@@ -311,9 +311,8 @@ function solve_multi_period_fpl(data, options)
     order = collect(0:3)
     price_modified_players = data["price_modified_players"]
 
-
     # Model
-    model = Model(Cbc.Optimizer)
+    model = Model(HiGHS.Optimizer)
 
     # Variables
     @variable(model, squad[players, all_gw], Bin)

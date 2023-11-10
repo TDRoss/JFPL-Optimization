@@ -34,7 +34,7 @@ instantiate
   after replacing `MY_TEAM_ID` with your team id.
   Copy the content of the page into `data/team.json` file, by creating one.
 
-Note: the CBC and SCIP solvers are installed with this project. If you would like to try other solvers, please see the [documentation](https://jump.dev/JuMP.jl/stable/packages/solvers/) on what is available and their installation dependencies.
+Note: the HiGHS (default), CBC, and SCIP solvers are installed with this project. If you would like to try other solvers, please see the JuMP [documentation](https://jump.dev/JuMP.jl/stable/packages/solvers/) on what is available and their installation dependencies.
 
 
 ## Instructions

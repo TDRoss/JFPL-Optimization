@@ -2,7 +2,7 @@
 
 julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "3cc6514a02b1d59720c1282812f5a532afcb6ee6"
+project_hash = "753fa1546bb506922d328a9615efb4675764a5b0"
 
 [[deps.ASL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -227,6 +227,18 @@ deps = ["Base64", "CodecZlib", "ConcurrentUtilities", "Dates", "ExceptionUnwrapp
 git-tree-sha1 = "5eab648309e2e060198b45820af1a37182de3cce"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 version = "1.10.0"
+
+[[deps.HiGHS]]
+deps = ["HiGHS_jll", "MathOptInterface", "PrecompileTools", "SparseArrays"]
+git-tree-sha1 = "fce13308f09771b160232903cad57be39a8a0ebb"
+uuid = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
+version = "1.7.5"
+
+[[deps.HiGHS_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "10bf0ecdf70f643bfc1948a6af0a98be3950a3fc"
+uuid = "8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
+version = "1.6.0+0"
 
 [[deps.Hwloc_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
