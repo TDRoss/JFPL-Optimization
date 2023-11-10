@@ -521,10 +521,10 @@ function solve_multi_period_fpl(data, options)
         player_out = get(booked_transfer, "transfer_out", nothing)
 
         if player_in !== nothing
-            @constraint(model, transfer_in[player_in, transfer_gw] == 1, name="booked_transfer_in_$(transfer_gw)_$(player_in)")
+            @constraint(model, transfer_in[player_in, transfer_gw] == 1)
         end
         if player_out !== nothing
-            @constraint(model, transfer_out[player_out, transfer_gw] == 1, name="booked_transfer_out_$(transfer_gw)_$(player_out)")
+            @constraint(model, transfer_out[player_out, transfer_gw] == 1)
         end
     end
 
