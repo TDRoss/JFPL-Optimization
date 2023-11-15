@@ -22,6 +22,8 @@ cd JFPL-Optimization/run
 ```julia
 activate .
 ```
+(Note that on Windows launching Julia may start in your home directory. Check with `pwd()`. You may need to navigate back to `JFPL-Optimization/run` using `cd()`)
+
 - Install dependencies (this can take a while)
 ```julia
 instantiate
