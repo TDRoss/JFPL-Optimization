@@ -92,7 +92,7 @@ function solve_regular(runtime_options::Union{Dict, Nothing}=nothing)
     for result in response
         picks = result["picks"]
         gws = unique(picks[!, "week"])
-        println("Solution ", result["iter"] + 1)
+        println("Solution ", result["iter"])
         for gw in gws
             line_text = ""
             # chip_text = picks[picks[!, "week"] .== gw][1, "chip"]
@@ -167,7 +167,7 @@ function get_fplteam_link(options, response)
             gw_params = "lineup$gw=$lineup_players&bench$gw=$bench_players&cap$gw=$cap&vcap$gw=$vcap&chip$gw=$chip&transfers$gw=$tr_string&subs$gw=$sub_text&opt=true"
             result_url *= (gw == gws[1] ? "" : "&") * gw_params
         end
-        println("Solution ", result["iter"] + 1, ": ", result_url)
+        println("Solution ", result["iter"], ": ", result_url)
     end
 end
 

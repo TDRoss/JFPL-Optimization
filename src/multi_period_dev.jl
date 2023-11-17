@@ -532,7 +532,7 @@ function solve_multi_period_fpl(data, options)
         for gw in gameweeks
             gw_games = [i for i in fixtures if i["gw"] == gw]
             opposing_players = [(p1, p2) for f in gw_games for p1 in players if merged_data[playerinex[p1], "name"] == f["home"] for p2 in players if merged_data[playerinex[p2], "name"] == f["away"]]
-            @constraint(model, [(p1, p2) in opposing_players], lineup[p1, gw] + lineup[p2, gw] <= 1, name="no_opp_$(gw)")
+            @constraint(model, [(p1, p2) in opposing_players], lineup[p1, gw] + lineup[p2, gw] <= 1)
         end
     end
 
@@ -549,7 +549,7 @@ function solve_multi_period_fpl(data, options)
             con_iter = 0
             for (key, count) in value_dict
                 target_players = [p for p in players if merged_data[playerinex[p], "Pos"] == pos && buy_price[p] >= key - buffer && buy_price[p] <= key + buffer]
-                @constraint(model, [w in gameweeks] ,sum(squad[p, w] for p in target_players) >= count, name="price_point_$(pos)_$(con_iter)")
+                @constraint(model, [w in gameweeks] ,sum(squad[p, w] for p in target_players) >= count)
                 con_iter += 1
             end
         end
@@ -560,14 +560,14 @@ function solve_multi_period_fpl(data, options)
         target_gw = parse(Int, options["no_gk_rotation_after"])
         players_gk = [p for p in players if player_type[p] == 1]
         for p in players_gk
-            @constraint(model, [w in gameweeks[gameweeks .> target_gw]], lineup[p, w] >= lineup[p, target_gw] - use_fh[w], name="fixed_lineup_gk")
+            @constraint(model, [w in gameweeks[gameweeks .> target_gw]], lineup[p, w] >= lineup[p, target_gw] - use_fh[w])
         end
     end
 
     # No chip in specific gameweeks
     if haskey(options, "no_chip_gws") && length(options["no_chip_gws"]) > 0
         no_chip_gws = options["no_chip_gws"]
-        @constraint(model, sum(use_bb[w] + use_wc[w] + use_fh[w] for w in no_chip_gws) == 0, name="no_chip_gws")
+        @constraint(model, sum(use_bb[w] + use_wc[w] + use_fh[w] for w in no_chip_gws) == 0)
     end
 
     # Only booked transfers
@@ -586,20 +586,20 @@ function solve_multi_period_fpl(data, options)
         end
         in_players = Dict(p => (p in forced_in ? 1 : 0) for p in players)
         out_players = Dict(p => (p in forced_out ? 1 : 0) for p in players)
-        @constraint(model, [p in players], transfer_in[p, next_gw] == in_players[p], name="fix_tgw_tr_in")
-        @constraint(model, [p in players], transfer_out[p, next_gw] == out_players[p], name="fix_tgw_tr_out")
+        @constraint(model, [p in players], transfer_in[p, next_gw] == in_players[p])
+        @constraint(model, [p in players], transfer_out[p, next_gw] == out_players[p])
     end
 
     # Have 2 free transfers in specific gameweeks
     if haskey(options, "have_2ft_in_gws")
         for gw in options["have_2ft_in_gws"]
-            @constraint(model, free_transfers[gw] == 2, name="have_2ft_$(gw)")
+            @constraint(model, free_transfers[gw] == 2)
         end
     end
 
     # No transfers except wildcard
     if get(options, "no_trs_except_wc", false)
-        @constraint(model, [w in gameweeks], number_of_transfers[w] <= 15 * use_wc[w], name="wc_trs_only")
+        @constraint(model, [w in gameweeks], number_of_transfers[w] <= 15 * use_wc[w])
     end
 
     # Objectives
@@ -744,36 +744,36 @@ function solve_multi_period_fpl(data, options)
         push!(solutions, Dict("iter" => iter, "model" => model, "picks" => picks_df, "total_xp" => total_xp, "summary" => summary_of_actions, "buy" => buy_decisions, "sell" => sell_decisions, "score" => -objective_value(model)))
 
         if iteration_criteria == "this_gw_transfer_in"
-            actions = sum([1 - value(transfer_in[p, next_gw]) for p in players if value(transfer_in[p, next_gw]) > 0.5]) +
-                    sum([value(transfer_in[p, next_gw]) for p in players if value(transfer_in[p, next_gw]) < 0.5])
+            actions = sum([1 - transfer_in[p, next_gw] for p in players if value(transfer_in[p, next_gw]) > 0.5]) +
+                    sum([transfer_in[p, next_gw] for p in players if value(transfer_in[p, next_gw]) < 0.5])
 
         elseif iteration_criteria == "this_gw_transfer_out"
-            actions = sum([1 - value(transfer_out[p, next_gw]) for p in players if value(transfer_out[p, next_gw]) > 0.5]) +
-                    sum([value(transfer_out[p, next_gw]) for p in players if value(transfer_out[p, next_gw]) < 0.5])
+            actions = sum([1 - transfer_out[p, next_gw] for p in players if value(transfer_out[p, next_gw]) > 0.5]) +
+                    sum([transfer_out[p, next_gw] for p in players if value(transfer_out[p, next_gw]) < 0.5])
 
         elseif iteration_criteria == "this_gw_transfer_in_out"
-            actions = sum([1 - value(transfer_in[p, next_gw]) for p in players if value(transfer_in[p, next_gw]) > 0.5]) +
-                    sum([value(transfer_in[p, next_gw]) for p in players if value(transfer_in[p, next_gw]) < 0.5]) +
-                    sum([1 - value(transfer_out[p, next_gw]) for p in players if value(transfer_out[p, next_gw]) > 0.5]) +
-                    sum([value(transfer_out[p, next_gw]) for p in players if value(transfer_out[p, next_gw]) < 0.5])
+            actions = sum([1 - transfer_in[p, next_gw] for p in players if value(transfer_in[p, next_gw]) > 0.5]) +
+                    sum([transfer_in[p, next_gw] for p in players if value(transfer_in[p, next_gw]) < 0.5]) +
+                    sum([1 - transfer_out[p, next_gw] for p in players if value(transfer_out[p, next_gw]) > 0.5]) +
+                    sum([transfer_out[p, next_gw] for p in players if value(transfer_out[p, next_gw]) < 0.5])
 
         elseif iteration_criteria == "chip_gws"
-            actions = sum([1 - value(use_wc[w]) for w in gameweeks if value(use_wc[w]) > 0.5]) +
-                    sum([value(use_wc[w]) for w in gameweeks if value(use_wc[w]) < 0.5]) +
-                    sum([1 - value(use_bb[w]) for w in gameweeks if value(use_bb[w]) > 0.5]) +
-                    sum([value(use_bb[w]) for w in gameweeks if value(use_bb[w]) < 0.5]) +
-                    sum([1 - value(use_fh[w]) for w in gameweeks if value(use_fh[w]) > 0.5]) +
-                    sum([value(use_fh[w]) for w in gameweeks if value(use_fh[w]) < 0.5])
+            actions = sum([1 - use_wc[w] for w in gameweeks if value(use_wc[w]) > 0.5]) +
+                    sum([use_wc[w] for w in gameweeks if value(use_wc[w]) < 0.5]) +
+                    sum([1 - use_bb[w] for w in gameweeks if value(use_bb[w]) > 0.5]) +
+                    sum([use_bb[w] for w in gameweeks if value(use_bb[w]) < 0.5]) +
+                    sum([1 - use_fh[w] for w in gameweeks if value(use_fh[w]) > 0.5]) +
+                    sum([use_fh[w] for w in gameweeks if value(use_fh[w]) < 0.5])
 
         elseif iteration_criteria == "target_gws_transfer_in"
             target_gws = get(options, "iteration_target", [next_gw])
             transferred_players = [(p, w) for p in players for w in target_gws if value(transfer_in[p,w]) > 0.5]
             remaining_players = [(p, w) for p in players for w in target_gws if value(transfer_in[p,w]) < 0.5]
-            actions = sum([1 - value(transfer_in[p,w]) for (p, w) in transferred_players]) +
-                    sum([value(transfer_in[p,w]) for (p, w) in remaining_players])
+            actions = sum([1 - transfer_in[p,w] for (p, w) in transferred_players]) +
+                    sum([transfer_in[p,w] for (p, w) in remaining_players])
         end
 
-        @constraint(model, actions >= 1, name="cutoff_$(iter)")
+        @constraint(model, actions >= 1)
     end
 
     return solutions
