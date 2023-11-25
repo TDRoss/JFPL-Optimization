@@ -96,23 +96,6 @@ function solve_regular(runtime_options::Union{Dict, Nothing}=nothing)
         picks = result["picks"]
         gws = unique(picks[!, "week"])
         println("Solution ", result["iter"])
-    #     for gw in gws
-    #         line_text = ""
-    #         chip_text = picks[picks.week .== gw, :chip][1]
-    #         if chip_text != ""
-    #             line_text *= "($chip_text) "
-    #         end
-    #         sell_text = join(picks[(picks[!, "week"] .== gw) .& (picks[!, "transfer_out"] .== 1), "name"], ", ")
-    #         buy_text = join(picks[(picks[!, "week"] .== gw) .& (picks[!, "transfer_in"] .== 1), "name"], ", ")
-    #         if sell_text != ""
-    #             line_text *= sell_text * " -> " * buy_text
-    #         else
-    #             line_text *= "Roll"
-    #         end
-    #         println("\tGW$gw: $line_text")
-    #     end
-    # end
-
         sell_text = [join(picks[(picks[!, "week"] .== gw) .& (picks[!, "transfer_out"] .== 1), "name"], "\n") for gw in gws]
         buy_text = [join(picks[(picks[!, "week"] .== gw) .& (picks[!, "transfer_in"] .== 1), "name"], "\n") for gw in gws]
         sell_text[sell_text.==""] .= "Roll"

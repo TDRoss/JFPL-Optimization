@@ -31,22 +31,24 @@ function read_data(options, source; weights=nothing)
         data[!,:ID] = data[!,:review_id]
         return data
     elseif source == "mixed"
-        # Get each source separately and mix with given weights
         all_data = []
         for (name, weight) in weights
             if weight == 0
                 continue
             end
-            df = read_data(options, name)
-            first_gw_col = findfirst(occursin("_Pts"), names(df))
-            if first_gw_col !== nothing
-                df = df[.!ismissing.(df[:, first_gw_col]), :]
-                for col in names(df)
-                    if occursin("_Pts", col)
-                        df[Symbol(split(col, "_")[1], "_weight")] = weight
-                    end
-                end
+            df = read_data(options, name) 
+    
+            # Drop players without data
+            first_gw_col = findfirst(c -> occursin("_Pts", c), names(df))
+    
+            # Drop missing ones
+            df = df[.!ismissing.(df[:, first_gw_col]), :]
+    
+            # Add weight columns
+            for col in filter(c -> occursin("_Pts", c), names(df))
+                df[!, split(col, '_')[1] * "_weight"] .= weight
             end
+    
             push!(all_data, df)
         end
     end
@@ -54,26 +56,32 @@ function read_data(options, source; weights=nothing)
     # Update EV by weight
     new_data = []
     for d in all_data
-        pts_columns = filter(i -> occursin("_Pts", i), names(d))
-        min_columns = filter(i -> occursin("_xMins", i), names(d))
-        weights_cols_pts = [Symbol(split(i, "_")[1] * "_weight") for i in pts_columns]
-        weights_cols_mins = [Symbol(split(i, "_")[1] * "_weight") for i in min_columns]
-
+        # Find the columns that end with '_Pts'
+        pts_columns = [i for i in names(d) if occursin("_Pts", i)]
+        # Find the columns that end with '_xMins'
+        min_columns = [i for i in names(d) if occursin("_xMins", i)]
+    
+        # Generate weights columns for points
+        weights_cols = [split(i, '_')[1] * "_weight" for i in pts_columns]
+        # Element-wise multiplication
         for col in pts_columns
-            d[:, col] .= d[:, col] .* d[:, Symbol(split(col, "_")[1] * "_weight")]
+            d[!, col] = d[!, col] .* d[!, Symbol(weights_cols[findfirst(==(col), pts_columns)])]
         end
-
+    
+        # Generate weights columns for minutes
+        weights_cols = [split(i, '_')[1] * "_weight" for i in min_columns]
+        # Element-wise multiplication
         for col in min_columns
-            d[:, col] .= d[:, col] .* d[:, Symbol(split(col, "_")[1] * "_weight")]
+            d[!, col] = d[!, col] .* d[!, Symbol(weights_cols[findfirst(==(col), min_columns)])]
         end
-
+    
         push!(new_data, copy(d))
     end
 
     combined_data = vcat(new_data...)
-    combined_data[:real_id] = combined_data[:review_id]
+    combined_data[!,:real_id] = combined_data[!,:review_id]
 
-    key_dict = Dict{Symbol, Function}()
+    key_dict = Dict()
     for i in names(combined_data)
         if occursin("_weight", String(i))
             key_dict[i] = sum
@@ -84,8 +92,9 @@ function read_data(options, source; weights=nothing)
         end
     end
 
-    grouped_data = combine(groupby(combined_data, :real_id), key_dict...)
-    final_data = grouped_data[grouped_data[:review_id] .!= 0, :]
+    key_exprs = [(Symbol(key) => value => Symbol(key)) for (key, value) in key_dict]
+    grouped_data = combine(groupby(combined_data, :real_id), key_exprs...)
+    final_data = grouped_data[grouped_data[!,:review_id] .!= 0, :]
 
     # adjust by weight sum for each player
     for c in names(final_data)
@@ -97,11 +106,11 @@ function read_data(options, source; weights=nothing)
     
     
     r = HTTP.get("https://fantasy.premierleague.com/api/bootstrap-static/")
-    players_data = JSON.parse(String(r.body))["elements"]
-    
+    sitedata = JSON.parse(String(r.body))
+    players_data = sitedata["elements"]
     existing_ids = final_data[!, "review_id"]
     element_type_dict = Dict(1 => 'G', 2 => 'D', 3 => 'M', 4 => 'F')
-    teams_data = JSON.parse(String(r.body))["teams"]
+    teams_data = sitedata["teams"]
     team_code_dict = Dict()
     for team in teams_data
         team_code_dict[team["code"]] = team
