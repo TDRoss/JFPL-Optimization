@@ -88,6 +88,7 @@ function read_sensitivity(options)
         fwds = combine(groupby(DataFrame(player=forwards), :player), nrow => :PSB)
 
         for df in [keepers, defs, mids, fwds]
+            sort!(df, order(:PSB, rev=true))
             df[!, :PSB] .= round.(df.PSB ./ no_plans * 100, digits=0)
             df[!, :PSB] .= string.(df.PSB, "%")
         end

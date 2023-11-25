@@ -3,6 +3,7 @@ using JSON
 using ArgParse
 using Dates
 using DataFrames
+using PrettyTables
 include("../src/data_parser.jl")
 include("../src/multi_period_dev.jl")
 
@@ -89,27 +90,46 @@ function solve_regular(runtime_options::Union{Dict, Nothing}=nothing)
     println(result_table[:, [:iter, :sell, :buy, :score]])
 
     # Detailed print
+    h1 = Highlighter(f = (data, i, j) -> (data[i,j] == "Roll"), crayon = Crayon(foreground = :yellow))
+    h2 = Highlighter(f = (data, i, j) -> (j == 5), crayon = Crayon(foreground = :blue))
     for result in response
         picks = result["picks"]
         gws = unique(picks[!, "week"])
         println("Solution ", result["iter"])
-        for gw in gws
-            line_text = ""
-            # chip_text = picks[picks[!, "week"] .== gw][1, "chip"]
-            chip_text = picks[picks.week .== gw, :chip][1]
-            if chip_text != ""
-                line_text *= "($chip_text) "
-            end
-            sell_text = join(picks[(picks[!, "week"] .== gw) .& (picks[!, "transfer_out"] .== 1), "name"], ", ")
-            buy_text = join(picks[(picks[!, "week"] .== gw) .& (picks[!, "transfer_in"] .== 1), "name"], ", ")
-            if sell_text != ""
-                line_text *= sell_text * " -> " * buy_text
-            else
-                line_text *= "Roll"
-            end
-            println("\tGW$gw: $line_text")
+    #     for gw in gws
+    #         line_text = ""
+    #         chip_text = picks[picks.week .== gw, :chip][1]
+    #         if chip_text != ""
+    #             line_text *= "($chip_text) "
+    #         end
+    #         sell_text = join(picks[(picks[!, "week"] .== gw) .& (picks[!, "transfer_out"] .== 1), "name"], ", ")
+    #         buy_text = join(picks[(picks[!, "week"] .== gw) .& (picks[!, "transfer_in"] .== 1), "name"], ", ")
+    #         if sell_text != ""
+    #             line_text *= sell_text * " -> " * buy_text
+    #         else
+    #             line_text *= "Roll"
+    #         end
+    #         println("\tGW$gw: $line_text")
+    #     end
+    # end
+
+        sell_text = [join(picks[(picks[!, "week"] .== gw) .& (picks[!, "transfer_out"] .== 1), "name"], "\n") for gw in gws]
+        buy_text = [join(picks[(picks[!, "week"] .== gw) .& (picks[!, "transfer_in"] .== 1), "name"], "\n") for gw in gws]
+        sell_text[sell_text.==""] .= "Roll"
+        buy_text[buy_text.==""] .= "Roll"
+        itb_text = [string(picks[picks[!,"week"] .== gw, "ITB"][1]) for gw in gws]
+        chip_text = [picks[picks.week .== gw, :chip][1] for gw in gws]
+        if all(s -> s == "", chip_text)
+            header = ["", "Transfer Out", "Transfer In", "ITB"]
+            text_data = [["GW$(gws[i])", sell_text[i], buy_text[i], itb_text[i]] for i in eachindex(gws)]
+        else
+            header = ["", "Transfer Out", "Transfer In", "ITB", "Chips"]
+            text_data = [["GW$(gws[i])", sell_text[i], buy_text[i], itb_text[i], chip_text[i]] for i in eachindex(gws)]
         end
+        text_matrix = reduce(vcat, map(row -> reshape(row, 1, length(row)), text_data))
+        pretty_table(text_matrix; header=header, alignment=:c, crop = :none, highlighters=(h1,h2),tf=tf_unicode_rounded, linebreaks=true, body_hlines=collect(eachindex(gws)))
     end
+
 
     # Link to FPL.Team
     get_fplteam_link(options, response)

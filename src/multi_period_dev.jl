@@ -622,7 +622,7 @@ function solve_multi_period_fpl(data, options)
 
         optimize!(model)
         # DataFrame generation
-        column_names = ["id", "week", "name", "pos", "type", "team", "buy_price", "sell_price", "xP", "xMin", "squad", "lineup", "bench", "captain", "vicecaptain", "transfer_in", "transfer_out", "multiplier", "xp_cont", "chip"]
+        column_names = ["id", "week", "name", "pos", "type", "team", "buy_price", "sell_price", "xP", "xMin", "squad", "lineup", "bench", "captain", "vicecaptain", "transfer_in", "transfer_out", "multiplier", "xp_cont", "chip", "ITB"]
         picks_df = DataFrame([name => [] for name in column_names])
 
         for w in gameweeks
@@ -658,7 +658,7 @@ function solve_multi_period_fpl(data, options)
                         ""
                     end
 
-                    push!(picks_df, [p, w, lp["web_name"], position, lp["element_type"], lp["name"], player_buy_price, player_sell_price, round(points_player_week[p,w], digits=2), minutes_player_week[p,w], is_squad, is_lineup, bench_value, is_captain, is_vice, is_transfer_in, is_transfer_out, multiplier, xp_cont, chip_text])
+                    push!(picks_df, [p, w, lp["web_name"], position, lp["element_type"], lp["name"], player_buy_price, player_sell_price, round(points_player_week[p,w], digits=2), minutes_player_week[p,w], is_squad, is_lineup, bench_value, is_captain, is_vice, is_transfer_in, is_transfer_out, multiplier, xp_cont, chip_text, round(value(in_the_bank[w]),digits=2)])
                 end
             end
         end
