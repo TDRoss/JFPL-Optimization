@@ -374,13 +374,13 @@ function solve_multi_period_fpl(data, options)
     @constraint(model, [w in gameweeks], sum(captain[p,w] for p in players) == 1)
     @constraint(model, [w in gameweeks], sum(vicecap[p,w] for p in players) == 1)
     @constraint(model, [p in players, w in gameweeks], lineup[p,w] <= squad[p,w] + use_fh[w])
-    @constraint(model, [p in players, w in gameweeks, o in 1:3], bench[p,w,o] <= squad[p,w] + use_fh[w])
+    @constraint(model, [p in players, w in gameweeks, o in order], bench[p,w,o] <= squad[p,w] + use_fh[w])
     @constraint(model, [p in players, w in gameweeks], lineup[p,w] <= squad_fh[p,w] + 1 - use_fh[w])
-    @constraint(model, [p in players, w in gameweeks, o in 1:3], bench[p,w,o] <= squad_fh[p,w] + 1 - use_fh[w])
+    @constraint(model, [p in players, w in gameweeks, o in order], bench[p,w,o] <= squad_fh[p,w] + 1 - use_fh[w])
     @constraint(model, [p in players, w in gameweeks], captain[p,w] <= lineup[p,w])
     @constraint(model, [p in players, w in gameweeks], vicecap[p,w] <= lineup[p,w])
     @constraint(model, [p in players, w in gameweeks], captain[p,w] + vicecap[p,w] <= 1)
-    @constraint(model, [p in players, w in gameweeks], lineup[p,w] + sum(bench[p,w,o] for o in 1:3) <= 1)
+    @constraint(model, [p in players, w in gameweeks], lineup[p,w] + sum(bench[p,w,o] for o in order) <= 1)
     @constraint(model, [t in element_types, w in gameweeks], lineup_type_count[t,w] >= type_data[t, "squad_min_play"])
     @constraint(model, [t in element_types, w in gameweeks], lineup_type_count[t,w] <= type_data[t, "squad_max_play"] + use_bb[w])
     @constraint(model, [t in element_types, w in gameweeks], squad_type_count[t,w] == type_data[t, "squad_select"])
@@ -602,6 +602,12 @@ function solve_multi_period_fpl(data, options)
         @constraint(model, [w in gameweeks], number_of_transfers[w] <= 15 * use_wc[w])
     end
 
+
+    if haskey(options, "locked_next_gw") && !isnothing(options["locked_next_gw"])
+        locked_next_gw = options["locked_next_gw"]
+        @constraint(model, [p in locked_next_gw], squad[p, gameweeks[1]] == 1, name="lock_player_next_gw")
+    end
+
     # Objectives
     gw_xp = Dict(w => sum(points_player_week[p, w] * (lineup[p, w] + captain[p, w] + 0.1 * vicecap[p, w] + sum(bench_weights[o] * bench[p, w, o] for o in order)) for p in players) for w in gameweeks)
     gw_total = Dict(w => gw_xp[w] - 4 * penalized_transfers[w] + ft_value * free_transfers[w] - ft_penalty[w] + itb_value * in_the_bank[w] for w in gameweeks)
@@ -701,9 +707,8 @@ function solve_multi_period_fpl(data, options)
             end
             
             lineup_players = filter(row -> row[:week] == w && row[:lineup] == 1, picks_df)
-            bench_players = filter(row -> row[:week] == w && row[:bench] >=1, picks_df)
-
-        
+            bench_players = filter(row -> row[:week] == w && row[:bench] >= 0, picks_df)
+            
 
             summary_of_actions *= "---\nLineup: \n"
 
@@ -764,6 +769,14 @@ function solve_multi_period_fpl(data, options)
                     sum([use_bb[w] for w in gameweeks if value(use_bb[w]) < 0.5]) +
                     sum([1 - use_fh[w] for w in gameweeks if value(use_fh[w]) > 0.5]) +
                     sum([use_fh[w] for w in gameweeks if value(use_fh[w]) < 0.5])
+
+
+        elseif iteration_criteria == "horizon-buy-sell"
+            actions = sum(1 - transfer_in[p, w] for p in players, w in gameweeks if value(transfer_in[p, w]) > 0.5) +
+                        sum(transfer_in[p, w] for p in players, w in gameweeks if value(transfer_in[p, w]) < 0.5) +
+                        sum(1 - transfer_out[p, w] for p in players, w in gameweeks if value(transfer_out[p, w]) > 0.5) +
+                        sum(transfer_out[p, w] for p in players, w in gameweeks if value(transfer_out[p, w]) < 0.5)
+                    
 
         elseif iteration_criteria == "target_gws_transfer_in"
             target_gws = get(options, "iteration_target", [next_gw])
