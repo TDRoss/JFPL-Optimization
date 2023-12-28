@@ -605,7 +605,7 @@ function solve_multi_period_fpl(data, options)
 
     if haskey(options, "locked_next_gw") && !isnothing(options["locked_next_gw"])
         locked_next_gw = options["locked_next_gw"]
-        @constraint(model, [p in locked_next_gw], squad[p, gameweeks[1]] == 1, name="lock_player_next_gw")
+        @constraint(model, [p in locked_next_gw], squad[p, gameweeks[1]] == 1)
     end
 
     # Objectives
