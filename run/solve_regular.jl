@@ -86,8 +86,25 @@ function solve_regular(runtime_options::Union{Dict, Nothing}=nothing)
         CSV.write("../data/results/regular_$(stamp)_$(run_id)_$(iter).csv", result["picks"])
     end
 
+    println("Result Summary")
     result_table = DataFrame(response)
-    println(result_table[:, [:iter, :sell, :buy, :score]])
+    pretty_table(result_table[:, [:iter, :sell, :buy, :score]])
+
+    if length(get(options, "report_decay_base", [])) > 0
+        try
+            println("Decay Metrics")
+            for result in response
+                println("iter = $(result["iter"])")
+                metrics_df = result["decay_metrics"]
+                metrics_df = DataFrame(Decay = collect(keys(result["decay_metrics"])), Score = collect(values(result["decay_metrics"])))
+                sort!(metrics_df, :Decay)
+                pretty_table(metrics_df)
+            end
+        catch e
+
+        end
+    end
+
 
     # Detailed print
     h1 = Highlighter(f = (data, i, j) -> (data[i,j] == "Roll"), crayon = Crayon(foreground = :yellow))
@@ -174,6 +191,6 @@ function get_fplteam_link(options, response)
     end
 end
 
-if abspath(PROGRAM_FILE) == @__FILE__    
+# if abspath(PROGRAM_FILE) == @__FILE__    
     solve_regular()
-end
+# end

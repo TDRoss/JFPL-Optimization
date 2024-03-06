@@ -313,6 +313,8 @@ function solve_multi_period_fpl(data, options)
 
     # Model
     model = Model(HiGHS.Optimizer)
+    set_attribute(model, "presolve", "on")
+
 
     # Variables
     @variable(model, squad[players, all_gw], Bin)
@@ -470,11 +472,12 @@ function solve_multi_period_fpl(data, options)
     if haskey(options, "banned")
         banned_players = options["banned"]
         @constraint(model, [p in banned_players], sum(squad[p, w] for w in gameweeks) == 0)
+        @constraint(model, [p in banned_players], sum(squad_fh[p, w] for w in gameweeks) == 0)
     end
 
     if haskey(options, "locked")
         locked_players = options["locked"]
-        @constraint(model, [p in locked_players, w in gameweeks], squad[p, w] == 1)
+        @constraint(model, [p in locked_players, w in gameweeks], squad[p, w] + squad_fh[p, w] == 1)
     end
 
     if get(options, "no_future_transfer", false)
@@ -620,6 +623,9 @@ function solve_multi_period_fpl(data, options)
         @objective(model, Max, decay_objective)
     end
 
+    report_decay_base = get(options, "report_decay_base", [])
+    decay_metrics = Dict(i => sum(gw_total[w] * i^(w - next_gw) for w in gameweeks) for i in report_decay_base)
+
     iteration = get(options, "iteration", 1)
     iteration_criteria = get(options, "iteration_criteria", "this_gw_transfer_in")
     solutions = []
@@ -740,13 +746,23 @@ function solve_multi_period_fpl(data, options)
             sell_decisions = "-"
         end
 
-        if iteration == 1
-            return [Dict("iter" => iter, "model" => model, "picks" => picks_df, "total_xp" => total_xp, "summary" => summary_of_actions, "buy" => buy_decisions, "sell" => sell_decisions, "score" => -objective_value(model))]
-        end
-
-
         # Add current solution to a list, and add a new cut
-        push!(solutions, Dict("iter" => iter, "model" => model, "picks" => picks_df, "total_xp" => total_xp, "summary" => summary_of_actions, "buy" => buy_decisions, "sell" => sell_decisions, "score" => -objective_value(model)))
+
+        push!(solutions, Dict(
+        "iter" => iter,
+        "model" => model,
+        "picks" => picks_df,
+        "total_xp" => total_xp,
+        "summary" => summary_of_actions,
+        "buy" => buy_decisions,
+        "sell" => sell_decisions,
+        "score" => objective_value(model),
+        "decay_metrics" => Dict(key => value(val) for (key, val) in decay_metrics)
+        ))
+
+        if iteration == 1
+            return solutions
+        end
 
         if iteration_criteria == "this_gw_transfer_in"
             actions = sum([1 - transfer_in[p, next_gw] for p in players if value(transfer_in[p, next_gw]) > 0.5]) +

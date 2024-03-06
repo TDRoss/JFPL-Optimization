@@ -36,7 +36,7 @@ instantiate
   after replacing `MY_TEAM_ID` with your team id.
   Copy the content of the page into `data/team.json` file, by creating one.
 
-Note: the HiGHS (default), CBC, and SCIP solvers are installed with this project. If you would like to try other solvers, please see the JuMP [documentation](https://jump.dev/JuMP.jl/stable/packages/solvers/) on what is available and their installation dependencies.
+Note: the HiGHS (default) and CBC solvers are installed with this project. If you would like to try other solvers, please see the JuMP [documentation](https://jump.dev/JuMP.jl/stable/packages/solvers/) on what is available and their installation dependencies.
 
 
 ## Instructions
@@ -48,7 +48,7 @@ Note: the HiGHS (default), CBC, and SCIP solvers are installed with this project
 
   ``` json
 	{
-	    "horizon": 6,
+	    "horizon": 8,
 	    "decay_base": 0.84,
 	    "ft_value": 0.8,
 	    "ft_use_penalty": 1,
@@ -62,7 +62,6 @@ Note: the HiGHS (default), CBC, and SCIP solvers are installed with this project
 	    "ev_per_price_cutoff": 20,
 	    "banned": [],
 	    "locked": [],
-	    "keep": [],
 	    "single_solve": false,
 	    "num_transfers": null,
 	    "hit_limit": null,
@@ -84,6 +83,7 @@ Note: the HiGHS (default), CBC, and SCIP solvers are installed with this project
 	    "iteration": 1,
 	    "iteration_criteria": "this_gw_transfer_in",
 	    "iteration_target": [],
+      "report_decay_base": [0.85, 0.9, 0.95, 1.0, 1.017],
 	    "datasource" : "review",
 	    "data_weights": {"review": 40, "review-odds": 30, "mikkel": 30, "kiwi": 0},
 	    "export_data": "final.csv",
@@ -139,6 +139,7 @@ Note: the HiGHS (default), CBC, and SCIP solvers are installed with this project
     - `target_gws_transfer_in` will force to replace players to buy in target GW (provided by `iteration_target` parameter)
 
   - `iteration_target`: list of GWs where plans will be forced to replace in each iteration
+  - `report_decay_base`: list of decay bases to be measured and reported at the end of the solve 
   - `datasource` : `review`, `kiwi`, `mikkel` or `avg` specifies the data to be used.  
     - `review` requires `fplreview.csv` file
     - `review-odds` requires `fplreview-odds.csv` file
