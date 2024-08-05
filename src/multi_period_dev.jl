@@ -347,8 +347,8 @@ function solve_multi_period_fpl(data, options)
     player_type = Dict(p => merged_data[playerinex[p], "element_type"] for p in players)
     sell_price = data["sell_price"]
     buy_price = data["buy_price"]
-    sold_amount = Dict(w => sum(sell_price[p] * transfer_out_first[p, w] for p in price_modified_players) +
-    sum(buy_price[p] * transfer_out_regular[p, w] for p in players) 
+    sold_amount = Dict(w => sum(sell_price[p] * transfer_out_first[p, w] for p in price_modified_players; init=0) +
+    sum(buy_price[p] * transfer_out_regular[p, w] for p in players; init= 0) 
     for w in gameweeks)
     fh_sell_price = Dict(p => p in price_modified_players ? sell_price[p] : buy_price[p] for p in players)
     bought_amount = Dict(w => sum(buy_price[p] * transfer_in[p, w] for p in players) for w in gameweeks)
@@ -612,8 +612,9 @@ function solve_multi_period_fpl(data, options)
     end
 
     # Objectives
+    hit_cost = get(options,"hit_cost", 4) 
     gw_xp = Dict(w => sum(points_player_week[p, w] * (lineup[p, w] + captain[p, w] + 0.1 * vicecap[p, w] + sum(bench_weights[o] * bench[p, w, o] for o in order)) for p in players) for w in gameweeks)
-    gw_total = Dict(w => gw_xp[w] - 4 * penalized_transfers[w] + ft_value * free_transfers[w] - ft_penalty[w] + itb_value * in_the_bank[w] for w in gameweeks)
+    gw_total = Dict(w => gw_xp[w] - hit_cost * penalized_transfers[w] + ft_value * free_transfers[w] - ft_penalty[w] + itb_value * in_the_bank[w] for w in gameweeks)
 
     if objective == "regular"
         total_xp = sum(gw_total[w] for w in gameweeks)
