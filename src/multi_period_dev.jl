@@ -534,8 +534,14 @@ function solve_multi_period_fpl(data, options)
     if get(options, "no_opposing_play", false)
         for gw in gameweeks
             gw_games = [i for i in fixtures if i["gw"] == gw]
-            opposing_players = [(p1, p2) for f in gw_games for p1 in players if merged_data[playerinex[p1], "name"] == f["home"] for p2 in players if merged_data[playerinex[p2], "name"] == f["away"]]
-            @constraint(model, [(p1, p2) in opposing_players], lineup[p1, gw] + lineup[p2, gw] <= 1)
+            if get(options,"opposing_play_group", "all") == "all"
+                opposing_players = [(p1, p2) for f in gw_games for p1 in players if merged_data[p1, :name] == f["home"] for p2 in players if merged_data[p2, :name] == f["away"]]
+                @constraint(model, [p1, p2] in opposing_players, lineup[p1, gw] + lineup[p2, gw] <= 1, base_name="no_opp_$gw")
+            elseif get(options, "opposing_play_group", nothing) == "position"
+                opposing_positions = [(1,3), (1,4), (2,3), (2,4), (3,1), (4,1), (3,2), (4,2)]  # gk vs mid, gk vs fwd, def vs mid, def vs fwd
+                opposing_players = [(p1, p2) for f in gw_games for p1 in players if merged_data[p1, :name] == f["home"] for p2 in players if merged_data[p2, :name] == f["away"] && (player_type[p1], player_type[p2]) in opposing_positions]
+                @constraint(model, [p1, p2] in opposing_players, lineup[p1, gw] + lineup[p2, gw] <= 1, base_name="no_opp_$gw")
+            end
         end
     end
 
@@ -765,6 +771,8 @@ function solve_multi_period_fpl(data, options)
             return solutions
         end
 
+        iter_diff = get(options,"iteration_difference",1)
+
         if iteration_criteria == "this_gw_transfer_in"
             actions = sum([1 - transfer_in[p, next_gw] for p in players if value(transfer_in[p, next_gw]) > 0.5]) +
                     sum([transfer_in[p, next_gw] for p in players if value(transfer_in[p, next_gw]) < 0.5])
@@ -772,13 +780,13 @@ function solve_multi_period_fpl(data, options)
         elseif iteration_criteria == "this_gw_transfer_out"
             actions = sum([1 - transfer_out[p, next_gw] for p in players if value(transfer_out[p, next_gw]) > 0.5]) +
                     sum([transfer_out[p, next_gw] for p in players if value(transfer_out[p, next_gw]) < 0.5])
-
+            @constraint(model, actions >= 1)
         elseif iteration_criteria == "this_gw_transfer_in_out"
             actions = sum([1 - transfer_in[p, next_gw] for p in players if value(transfer_in[p, next_gw]) > 0.5]) +
                     sum([transfer_in[p, next_gw] for p in players if value(transfer_in[p, next_gw]) < 0.5]) +
                     sum([1 - transfer_out[p, next_gw] for p in players if value(transfer_out[p, next_gw]) > 0.5]) +
                     sum([transfer_out[p, next_gw] for p in players if value(transfer_out[p, next_gw]) < 0.5])
-
+            @constraint(model, actions >= 1)
         elseif iteration_criteria == "chip_gws"
             actions = sum([1 - use_wc[w] for w in gameweeks if value(use_wc[w]) > 0.5]) +
                     sum([use_wc[w] for w in gameweeks if value(use_wc[w]) < 0.5]) +
@@ -787,23 +795,26 @@ function solve_multi_period_fpl(data, options)
                     sum([1 - use_fh[w] for w in gameweeks if value(use_fh[w]) > 0.5]) +
                     sum([use_fh[w] for w in gameweeks if value(use_fh[w]) < 0.5])
 
-
+            @constraint(model, actions >= 1)
         elseif iteration_criteria == "horizon-buy-sell"
             actions = sum(1 - transfer_in[p, w] for p in players, w in gameweeks if value(transfer_in[p, w]) > 0.5) +
                         sum(transfer_in[p, w] for p in players, w in gameweeks if value(transfer_in[p, w]) < 0.5) +
                         sum(1 - transfer_out[p, w] for p in players, w in gameweeks if value(transfer_out[p, w]) > 0.5) +
                         sum(transfer_out[p, w] for p in players, w in gameweeks if value(transfer_out[p, w]) < 0.5)
-                    
-
+        
+            @constraint(model, actions >= 1)
         elseif iteration_criteria == "target_gws_transfer_in"
             target_gws = get(options, "iteration_target", [next_gw])
             transferred_players = [(p, w) for p in players for w in target_gws if value(transfer_in[p,w]) > 0.5]
             remaining_players = [(p, w) for p in players for w in target_gws if value(transfer_in[p,w]) < 0.5]
             actions = sum([1 - transfer_in[p,w] for (p, w) in transferred_players]) +
                     sum([transfer_in[p,w] for (p, w) in remaining_players])
+            @constraint(model, actions >= 1)
+        elseif iteration_criteria == "this_gw_lineup"
+            selected_lineup = [p for p in players if lineup[p,next_gw].value > 0.5]
+            @constraint(model, sum(lineup[p, next_gw] for p in selected_lineup) <= length(selected_lineup) - iter_diff, base_name="cutoff_$iter")
         end
 
-        @constraint(model, actions >= 1)
     end
 
     return solutions

@@ -126,6 +126,7 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
   - `preseason`: solve flag for GW1 where team data is not important
   - `no_trs_except_wc`: when `true` prevents solver to make transfers except using wildcard
   - `no_opposing_play`: `true` if you do not want to have players in your lineup playing against each other in a GW
+  - `opposing_play_group`: `all` if you do not want any type of opposing players or `position` if you only don't want your offense playing against your defense
   - `pick_prices`: price points of players you want to force in a comma separated string
     For example, to force two 11.5M forwards, and one 8M midfielder, use
     `"pick_prices": {"G": "", "D": "", "M": "8", "F": "11.5,11.5"}`
@@ -137,7 +138,8 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
     - `this_gw_transfer_in_out` will force to replace players to buy or sell current GW in each solution
     - `chip_gws` will force to replace GWs where each chip is being used
     - `target_gws_transfer_in` will force to replace players to buy in target GW (provided by `iteration_target` parameter)
-
+    - `this_gw_lineup` will force to replace at least N players in your lineup
+    - `iteration_difference`: number of players to be different (only available for `this_gw_lineup` criteria for now)
   - `iteration_target`: list of GWs where plans will be forced to replace in each iteration
   - `report_decay_base`: list of decay bases to be measured and reported at the end of the solve 
   - `datasource` : `review`, `kiwi`, `mikkel` or `avg` specifies the data to be used.  
