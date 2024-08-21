@@ -1,6 +1,5 @@
 {
     "horizon": 5,
-    "locked_next_gw":[],
     "decay_base": 0.84,
     "ft_value": 1.5,
     "ft_use_penalty": 0.5,
@@ -13,7 +12,9 @@
     "xmin_lb": 2,
     "ev_per_price_cutoff": 0,
     "banned": [],
+    "banned_next_gw": [],
     "locked": [],
+    "locked_next_gw": [],
     "single_solve": true,
     "num_transfers": null,
     "hit_limit": null,

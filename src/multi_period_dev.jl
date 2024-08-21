@@ -702,10 +702,15 @@ function solve_multi_period_fpl(data, options)
         @constraint(model, [w in gameweeks], number_of_transfers[w] <= 15 * use_wc[w])
     end
 
+    if haskey(options, "banned_next_gw") && !isnothing(options["banned_next_gw"])
+        banned_next_gw = options["banned_next_gw"]
+        @constraint(model, [p in banned_next_gw], squad[p, gameweeks[1]] == 1,base_name="ban_player_specified_gw")
+    end
 
+    
     if haskey(options, "locked_next_gw") && !isnothing(options["locked_next_gw"])
         locked_next_gw = options["locked_next_gw"]
-        @constraint(model, [p in locked_next_gw], squad[p, gameweeks[1]] == 1)
+        @constraint(model, [p in locked_next_gw], squad[p, gameweeks[1]] == 1, base_name = "lock_player_specified_gw")
     end
 
     # Objectives

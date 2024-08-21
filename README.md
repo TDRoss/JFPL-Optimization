@@ -60,8 +60,10 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
 	    "randomized": false,
 	    "xmin_lb": 2,
 	    "ev_per_price_cutoff": 20,
-	    "banned": [],
-	    "locked": [],
+      "banned": [],
+      "banned_next_gw": [],
+      "locked": [],
+      "locked_next_gw": [],
 	    "single_solve": false,
       "forced_chip_gws": {"bb": [], "wc": [], "fh": [], "tc": []},
       "run_chip_combinations": {"bb": [], "wc": [], "fh": [], "tc": []},
@@ -108,8 +110,10 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
   - `xmin_lb`: cut-off for dropping players below this many minutes expectation
   - `ev_per_price_cutoff`: cut-off percentile for dropping players based on total EV per price (e.g. `20` means drop players below 20% percentile)
   - `bench_weights`: percentage weights in objective for bench players (gk and 3 outfield). Example: {"0":0.01,"1":0.3,"2":0.1,"3":0.05},
-  - `banned`: list of banned player IDs
+  - `banned`: list of player IDs to be banned over the entire horizon
+  - `banned_next_gw`: list of player IDs to be banned for the next gameweek. Alternatively, you can supply an `[ID, gameweek]` list as an element of the list to ban a player just for one specific gameweek. E.g. `[100, [200, 32]]` bans player with ID 100 for the next gameweek, and bans player with ID 200 for gameweek 32
   - `locked`: list of player IDs to always have during the horizon (e.g. `233` for Salah)
+  - `locked_next_gw`: List of player IDs to force just for the next gameweek. See `banned_next_gw` for extended usage
   - `future_transfer_limit`: upper bound how many transfers are allowed in future GWs
   - `no_transfer_gws`: list of GW numbers where transfers are not allowed
   - `booked_transfers`: list of booked transfers for future gameweeks, needs to have a `gw` key and at least one of `transfer_in` or `transfer_out` with the player ID. For example, to book a transfer of buying Kane (427) on GW5 and selling him on GW7, use  
