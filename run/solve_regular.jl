@@ -88,7 +88,7 @@ function solve_regular(runtime_options::Union{Dict, Nothing}=nothing)
 
     println("Result Summary")
     result_table = DataFrame(response)
-    pretty_table(result_table[:, [:iter, :sell, :buy, :score]])
+    pretty_table(result_table[:, [:iter, :sell, :buy, :chip, :score]])
 
     if length(get(options, "report_decay_base", [])) > 0
         try

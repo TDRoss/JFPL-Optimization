@@ -63,6 +63,8 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
 	    "banned": [],
 	    "locked": [],
 	    "single_solve": false,
+      "forced_chip_gws": {"bb": [], "wc": [], "fh": [], "tc": []},
+      "run_chip_combinations": {"bb": [], "wc": [], "fh": [], "tc": []},
 	    "num_transfers": null,
 	    "hit_limit": null,
 	    "use_wc": null,
@@ -116,11 +118,14 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
   - `use_wc`: GW to use wildcard (fixed)
   - `use_bb`: GW to use bench boost (fixed)
   - `use_fh`: GW to use free hit (fixed)
+  - `use_tc`: GW to use triple captain (fixed)
   - `chip_limits`: how many chips of each kind can be used by solver (you need to set it to at least 1 when force using a chip)
   - `no_chip_gws`: list of GWs to ban solver from using a chip
   - `allowed_chip_gws`: dictionary of list of GWs to allow chips to be used. For example  
     `"allowed_chip_gws": {"wc": [27,31]}`  
     will allow solver to use WC in GW27 and GW31, but not in another GW
+  - `forced_chip_gws`: dictionary of list of GWs to force chips to be used. Instead of 'allowing' chips, it makes sure that chips are used
+  - `run_chip_combinations`: generates a list of chip combinations to be tried one-by-one, instead of leaving to the solver  
   - `num_transfers`: fixed number of transfers for this GW
   - `hit_limit`: limit on total hits can be taken by the solver for entire horizon
   - `preseason`: solve flag for GW1 where team data is not important

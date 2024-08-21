@@ -1,4 +1,6 @@
 using CSV, DataFrames, JuMP, HiGHS, HTTP, JSON, Profile, Statistics
+using Base.Iterators: product
+
 include("data_parser.jl")
 
 
@@ -11,6 +13,25 @@ end
 function xmin_to_prob(xmin; sub_on=0.5, sub_off=0.3)
     start = clamp((xmin - 25 * sub_on) / (90 * (1-sub_off) + 65 * sub_off - 25 * sub_on), 0.001, 0.999)
     return start + (1-start) * sub_on
+end
+
+function get_dict_combinations(my_dict::Dict)
+    
+    for (key, value) in my_dict
+        if isnothing(value) || isempty(value)
+            my_dict[key] = [nothing]
+        end
+    end
+    
+    all_combs = [Dict(zip(keys(my_dict), values)) for values in product(values(my_dict)...)]
+    feasible_combs = []
+    
+    feasible_combs = filter(all_combs) do comb
+        c_values = [v for v in values(comb) if !isnothing(v)]
+        length(c_values) == length(Set(c_values))
+    end
+    
+    return feasible_combs
 end
 
 function get_my_data(session, team_id::Int)
@@ -150,9 +171,9 @@ function prep_data(my_data::Dict{String, Any}, options::Dict{String, Any})
     end
 
     original_keys = names(merged_data)
-    keys = filter(k -> occursin("_Pts", k), original_keys)
+    key_list = filter(k -> occursin("_Pts", k), original_keys)
     min_keys = filter(k -> occursin("_xMins", k), original_keys)
-    merged_data[!, :total_ev] =  [sum(row[keys]) for row in eachrow(merged_data)]
+    merged_data[!, :total_ev] =  [sum(row[key_list]) for row in eachrow(merged_data)]
     merged_data[!, :total_min] = [sum(row[min_keys]) for row in eachrow(merged_data)]
 
     sort!(merged_data, :total_ev, rev=true)
@@ -272,6 +293,8 @@ function solve_multi_period_fpl(data, options)
 
     chip_limits = get(options, "chip_limits", Dict())
     allowed_chip_gws = get(options, "allowed_chip_gws", Dict())
+    forced_chip_gws = get(options,"forced_chip_gws", Dict())
+    run_chip_combinations = get(options,"run_chip_combinations", nothing)
     booked_transfers = get(options, "booked_transfers", [])
     preseason = get(options, "preseason", false)
 
@@ -330,6 +353,7 @@ function solve_multi_period_fpl(data, options)
     @variable(model, use_wc[gameweeks], Bin)
     @variable(model, use_bb[gameweeks], Bin)
     @variable(model, use_fh[gameweeks], Bin)
+    @variable(model, use_tc[players, gameweeks], Bin)
     transfer_out = Dict((p, w) => transfer_out_regular[p,w] + (p in price_modified_players ? transfer_out_first[p,w] : 0) for p in players, w in gameweeks)
     @variable(model, in_the_bank[all_gw] >= 0)
     @variable(model, 0 <= free_transfers[all_gw] <= 2, Int)
@@ -360,12 +384,48 @@ function solve_multi_period_fpl(data, options)
     number_of_transfers[next_gw-1] = 1
     transfer_diff = Dict(w => number_of_transfers[w] - free_transfers[w] - 15 * use_wc[w] for w in gameweeks)
 
+
+    use_tc_gw = Dict(w => sum(use_tc[p,w] for p in players) for w in gameweeks)
+
+    # Chip combinations
+    if run_chip_combinations !== nothing
+        chip_combinations = get_dict_combinations(run_chip_combinations)
+        if length(chip_combinations) > 0
+            if all(isnothing, values(chip_combinations[1]))
+                # No possible chip combination
+            else
+                println("You have active chip combinations, iteration parameter will be overridden")
+                options["iteration"] = length(chip_combinations)
+                options["iteration_criteria"] = "chip_combinations"
+            
+
+                current_chips = chip_combinations[1]
+                pairs = [
+                    Dict("chip" => "wc", "variable" => use_wc),
+                    Dict("chip" => "fh", "variable" => use_fh),
+                    Dict("chip" => "bb", "variable" => use_bb),
+                    Dict("chip" => "tc", "variable" => use_tc_gw)
+                ]
+                for pair in pairs
+                    chip = pair["chip"]
+                    variable = pair["variable"]
+                    if haskey(current_chips, chip)
+                        @constraint(model, variable[current_chips[chip]] == 1, base_name="cc_$chip")
+                        options["chip_limits"][chip] = 1
+                    else
+                        @constraint(model, sum(variable[w] for w in gameweeks) == 0, base_name="cc_$chip")
+                        options["chip_limits"][chip] = 0
+                    end
+                end
+            end
+        end
+    end
     # Initial conditions
-    @constraint(model, [p in initial_squad], squad[p, next_gw-1] == 1)
-    @constraint(model, [p in setdiff(players,initial_squad)], squad[p, next_gw-1] == 0)
-    @constraint(model, in_the_bank[next_gw-1] == itb)
-    @constraint(model, free_transfers[next_gw] == ft)
-    @constraint(model, [w in gameweeks[gameweeks .> next_gw]], free_transfers[w] >= 1)
+    @constraint(model, [p in initial_squad], squad[p, next_gw-1] == 1, base_name="initial_squad_players")
+    @constraint(model, [p in setdiff(players,initial_squad)], squad[p, next_gw-1] == 0, base_name="initial_squad_others")
+    @constraint(model, in_the_bank[next_gw-1] == itb, base_name="initial_itb")
+    @constraint(model, free_transfers[next_gw] == ft, base_name="initial_ft")
+    @constraint(model, [w in gameweeks[gameweeks .> next_gw]], free_transfers[w] >= 1, base_name="future_ft_limit")
 
     # Constraints
     @constraint(model, [w in gameweeks], squad_count[w] == 15)
@@ -407,7 +467,7 @@ function solve_multi_period_fpl(data, options)
     @constraint(model, [w in gameweeks], penalized_transfers[w] >= transfer_diff[w])
 
     # Only one chip can be used in any gameweek
-    @constraint(model, [w in gameweeks], use_wc[w] + use_fh[w] + use_bb[w] <= 1)
+    @constraint(model, [w in gameweeks], use_wc[w] + use_fh[w] + use_bb[w] + use_tc_gw[w] <= 1)
     # If wc is used in the previous gameweek, then aux cannot be set to 1 in the current gameweek
     @constraint(model, [w in gameweeks[gameweeks .> next_gw]], aux[w] <= 1-use_wc[w-1])
     # If fh is used in the previous gameweek, then aux cannot be set to 1 in the current gameweek
@@ -428,9 +488,15 @@ function solve_multi_period_fpl(data, options)
         chip_limits["fh"] = 1
     end
 
+    if ~isnothing(options["use_tc"])
+        @constraint(model, use_tc_gw[options["use_tc"]] == 1)
+        chip_limits["tc"] = 1
+    end
+
     @constraint(model, sum(use_wc[w] for w in gameweeks) <= get(chip_limits, "wc", 0))
     @constraint(model, sum(use_bb[w] for w in gameweeks) <= get(chip_limits, "bb", 0))
     @constraint(model, sum(use_fh[w] for w in gameweeks) <= get(chip_limits, "fh", 0))
+    @constraint(model, sum(use_tc_gw[w] for w in gameweeks) <= get(chip_limits, "tc", 0))
     @constraint(model, [p in players, w in gameweeks], squad_fh[p, w] <= use_fh[w])
 
     if length(get(allowed_chip_gws, "wc", [])) > 0
@@ -446,6 +512,31 @@ function solve_multi_period_fpl(data, options)
     if length(get(allowed_chip_gws, "bb", [])) > 0
         gws_banned = [w for w in gameweeks if w ∉ allowed_chip_gws["bb"]]
         @constraint(model, [w in gws_banned], use_bb[w] == 0)
+    end
+
+    if !isempty(get(allowed_chip_gws, "tc", []))
+        gws_banned = [w for w in gameweeks if w ∉ allowed_chip_gws[:tc]]
+        @constraint(model, [w in gws_banned], use_tc_gw[w] == 0, base_name="banned_tc_gws")
+    end
+    
+    if !isempty(get(forced_chip_gws, "wc", []))
+        @constraint(model, sum(use_wc[w] for w in forced_chip_gws[:wc]) == 1, base_name="force_wc_gw")
+        chip_limits[:wc] = 1
+    end
+    
+    if !isempty(get(forced_chip_gws, "fh", []))
+        @constraint(model, sum(use_fh[w] for w in forced_chip_gws[:fh]) == 1, base_name="force_fh_gw")
+        chip_limits[:fh] = 1
+    end
+    
+    if !isempty(get(forced_chip_gws, "bb", []))
+        @constraint(model, sum(use_bb[w] for w in forced_chip_gws[:bb]) == 1, base_name="force_bb_gw")
+        chip_limits[:bb] = 1
+    end
+    
+    if !isempty(get(forced_chip_gws, "tc", []))
+        @constraint(model, sum(use_tc_gw[w] for w in forced_chip_gws[:tc]) == 1, base_name="force_tc_gw")
+        chip_limits[:tc] = 1
     end
 
     # Multiple-sell fix
@@ -619,7 +710,7 @@ function solve_multi_period_fpl(data, options)
 
     # Objectives
     hit_cost = get(options,"hit_cost", 4) 
-    gw_xp = Dict(w => sum(points_player_week[p, w] * (lineup[p, w] + captain[p, w] + 0.1 * vicecap[p, w] + sum(bench_weights[o] * bench[p, w, o] for o in order)) for p in players) for w in gameweeks)
+    gw_xp = Dict(w => sum(points_player_week[p, w] * (lineup[p, w] + captain[p, w] + 0.1 * vicecap[p, w] + use_tc[p, w] + sum(bench_weights[o] * bench[p, w, o] for o in order)) for p in players) for w in gameweeks)
     gw_total = Dict(w => gw_xp[w] - hit_cost * penalized_transfers[w] + ft_value * free_transfers[w] - ft_penalty[w] + itb_value * in_the_bank[w] for w in gameweeks)
 
     if objective == "regular"
@@ -652,6 +743,7 @@ function solve_multi_period_fpl(data, options)
                     is_squad = (value(use_fh[w]) < 0.5 && value(squad[p,w]) > 0.5) || (value(use_fh[w]) > 0.5 && value(squad_fh[p,w]) > 0.5) ? 1 : 0
                     is_lineup = value(lineup[p,w]) > 0.5 ? 1 : 0
                     is_vice = value(vicecap[p,w]) > 0.5 ? 1 : 0
+                    is_tc = value(use_tc[p,w]) > 0.5 ? 1 : 0
                     is_transfer_in = value(transfer_in[p,w]) > 0.5 ? 1 : 0
                     is_transfer_out = value(transfer_out[p,w]) > 0.5 ? 1 : 0
                     bench_value = -1
@@ -663,7 +755,7 @@ function solve_multi_period_fpl(data, options)
                     position = type_data[lp["element_type"], "singular_name_short"]
                     player_buy_price = is_transfer_in == 0 ? 0 : buy_price[p]
                     player_sell_price = is_transfer_out == 0 ? 0 : (p in price_modified_players && value(transfer_out_first[p,w]) > 0.5 ? sell_price[p] : buy_price[p])
-                    multiplier = 1 * (is_lineup == 1) + 1 * (is_captain == 1)
+                    multiplier = 1 * (is_lineup == 1) + 1 * (is_captain == 1) + 1 * (is_tc == 1)
                     xp_cont = points_player_week[p,w] * multiplier
 
                     # chip
@@ -673,6 +765,8 @@ function solve_multi_period_fpl(data, options)
                         "FH"
                     elseif value(use_bb[w]) > 0.5
                         "BB"
+                    elseif value(use_tc[p, w]) > 0.5
+                        "TC"    
                     else
                         ""
                     end
@@ -691,16 +785,17 @@ function solve_multi_period_fpl(data, options)
 
         # Writing summary
         summary_of_actions = ""
-        move_summary = Dict("buy" => [], "sell" => [])
+        move_summary = Dict("chip" => [],"buy" => [], "sell" => [])
         cumulative_xpts = 0
 
         lineup_players =[]
         bench_players = []
         for w in gameweeks
             summary_of_actions *= "** GW $w:\n"
-            chip_decision = (value(use_wc[w]) > 0.5 ? "WC" : "") * (value(use_fh[w]) > 0.5 ? "FH" : "") * (value(use_bb[w]) > 0.5 ? "BB" : "")
+            chip_decision = (value(use_wc[w]) > 0.5 ? "WC" : "") * (value(use_fh[w]) > 0.5 ? "FH" : "") * (value(use_bb[w]) > 0.5 ? "BB" : "") * (value(use_tc_gw[w]) > 0.5 ? "TC" : "")
             if chip_decision != ""
                 summary_of_actions *= "CHIP $chip_decision\n"
+                push!(move_summary["chip"], chip_decision * string(w))
             end
             summary_of_actions *= "ITB=$(round(value(in_the_bank[w]),digits=2)), FT=$(value(free_transfers[w])), PT=$(value(penalized_transfers[w])), NT=$(value(number_of_transfers[w]))\n"
             
@@ -746,11 +841,15 @@ function solve_multi_period_fpl(data, options)
 
         buy_decisions = join(move_summary["buy"], ", ")
         sell_decisions = join(move_summary["sell"], ", ")
+        chip_decisions = join(move_summary["chip"], ", ")
         if buy_decisions == ""
             buy_decisions = "-"
         end
         if sell_decisions == ""
             sell_decisions = "-"
+        end
+        if chip_decisions == ""
+            chip_decisions = "-"
         end
 
         # Add current solution to a list, and add a new cut
@@ -763,6 +862,7 @@ function solve_multi_period_fpl(data, options)
         "summary" => summary_of_actions,
         "buy" => buy_decisions,
         "sell" => sell_decisions,
+        "chip" => chip_decisions,
         "score" => objective_value(model),
         "decay_metrics" => Dict(key => value(val) for (key, val) in decay_metrics)
         ))
@@ -776,7 +876,7 @@ function solve_multi_period_fpl(data, options)
         if iteration_criteria == "this_gw_transfer_in"
             actions = sum([1 - transfer_in[p, next_gw] for p in players if value(transfer_in[p, next_gw]) > 0.5]) +
                     sum([transfer_in[p, next_gw] for p in players if value(transfer_in[p, next_gw]) < 0.5])
-
+            @constraint(model, actions >= 1)
         elseif iteration_criteria == "this_gw_transfer_out"
             actions = sum([1 - transfer_out[p, next_gw] for p in players if value(transfer_out[p, next_gw]) > 0.5]) +
                     sum([transfer_out[p, next_gw] for p in players if value(transfer_out[p, next_gw]) < 0.5])
@@ -813,6 +913,32 @@ function solve_multi_period_fpl(data, options)
         elseif iteration_criteria == "this_gw_lineup"
             selected_lineup = [p for p in players if lineup[p,next_gw].value > 0.5]
             @constraint(model, sum(lineup[p, next_gw] for p in selected_lineup) <= length(selected_lineup) - iter_diff, base_name="cutoff_$iter")
+        elseif iteration_criteria == "chip_combinations"
+            current_chips = get(chip_combinations, iter + 1, nothing)
+            isnothing(current_chips) && return
+    
+            pairs = [
+                (:wc, use_wc),
+                (:fh, use_fh),
+                (:bb, use_bb),
+                (:tc, use_tc_gw)
+            ]
+    
+            for (chip, variable) in pairs
+                constraint_name = Symbol("cc_$chip")
+                
+                if haskey(model, constraint_name)
+                    delete(model, model[constraint_name])
+                end
+    
+                if haskey(current_chips, chip)
+                    @constraint(model, variable[current_chips[chip]] == 1, base_name=constraint_name)
+                    options[:chip_limits][chip] = 1
+                else
+                    @constraint(model, sum(variable[w] for w in gameweeks) == 0, base_name=constraint_name)
+                    options[:chip_limits][chip] = 0
+                end
+            end
         end
 
     end
