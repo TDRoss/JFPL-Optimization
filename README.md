@@ -69,6 +69,8 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
       "run_chip_combinations": {"bb": [], "wc": [], "fh": [], "tc": []},
 	    "num_transfers": null,
 	    "hit_limit": null,
+      "hit_cost": 4,
+      "ft_custom_value": null,
 	    "use_wc": null,
 	    "use_bb": null,
 	    "use_fh": null,
@@ -132,6 +134,10 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
   - `run_chip_combinations`: generates a list of chip combinations to be tried one-by-one, instead of leaving to the solver  
   - `num_transfers`: fixed number of transfers for this GW
   - `hit_limit`: limit on total hits can be taken by the solver for entire horizon
+  - `hit_cost`: cost of a hit, 4 points by default but can be overriden to reduce hits suggested
+  - `ft_custom_value`: value of keeping your 2nd free transfer before a GW. For example  
+    `"ft_custom_value": {"35": 2, "38": 0.5}`  
+    will set value of 2nd FT for GW35 to 2 EV, and for GW38 to 0.5 EV
   - `preseason`: solve flag for GW1 where team data is not important
   - `no_trs_except_wc`: when `true` prevents solver to make transfers except using wildcard
   - `no_opposing_play`: `true` if you do not want to have players in your lineup playing against each other in a GW

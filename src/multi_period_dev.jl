@@ -283,6 +283,7 @@ function solve_multi_period_fpl(data, options)
     bench_weights = get(options, "bench_weights", Dict("0" => 0.03, "1" => 0.21, "2" => 0.06, "3" => 0.002))
     bench_weights = Dict(parse(Int,key) => value for (key, value) in bench_weights)
     ft_value = get(options, "ft_value", 1.5)
+    ft_gw_value = Dict()
     ft_use_penalty = get(options, "ft_use_penalty", nothing)
     itb_value = get(options, "itb_value", 0.08)
 
@@ -591,6 +592,11 @@ function solve_multi_period_fpl(data, options)
         @constraint(model, sum(penalized_transfers[w] for w in gameweeks) <= options["hit_limit"])
     end
 
+    if haskey(options, "ft_custom_value") && options["ft_custom_value"] !== nothing
+        ft_custom_value = Dict(parse(Int, key) => value for (key, value) in get(options, "ft_custom_value", Dict()))
+        ft_gw_value = merge(Dict(gw => ft_value for gw in gameweeks), ft_custom_value)
+    end
+
     if ~isnothing(options["future_transfer_limit"])
         @constraint(model, 
             sum(transfer_in[p,w] for p in players for w in gameweeks if w > next_gw && w != get(options, "use_wc", 0)) <= options["future_transfer_limit"]
@@ -716,7 +722,7 @@ function solve_multi_period_fpl(data, options)
     # Objectives
     hit_cost = get(options,"hit_cost", 4) 
     gw_xp = Dict(w => sum(points_player_week[p, w] * (lineup[p, w] + captain[p, w] + 0.1 * vicecap[p, w] + use_tc[p, w] + sum(bench_weights[o] * bench[p, w, o] for o in order)) for p in players) for w in gameweeks)
-    gw_total = Dict(w => gw_xp[w] - hit_cost * penalized_transfers[w] + ft_value * free_transfers[w] - ft_penalty[w] + itb_value * in_the_bank[w] for w in gameweeks)
+    gw_total = Dict(w => gw_xp[w] - hit_cost * penalized_transfers[w] + get(ft_gw_value,w,ft_value) * free_transfers[w] - ft_penalty[w] + itb_value * in_the_bank[w] for w in gameweeks)
 
     if objective == "regular"
         total_xp = sum(gw_total[w] for w in gameweeks)
