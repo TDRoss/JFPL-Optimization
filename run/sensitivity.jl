@@ -1,4 +1,4 @@
-using CSV, DataFrames, ArgParse
+using CSV, DataFrames, ArgParse, Glob, Statistics, PrettyTables
 
 function read_sensitivity(options)
     directory = "../data/results/"
@@ -18,48 +18,67 @@ function read_sensitivity(options)
     if situation in ["N", "n"]
         buys = []
         sells = []
+        move = []
         no_plans = 0
+        
+        for filename in glob("*.csv", directory)
+            plan = CSV.read(filename, DataFrame)
+            iter = 0
+            try
+                iter = plan[1, :iter]
+            catch
 
-        for filepath in readdir(directory)
-            if endswith(filepath, ".csv")
-                plan = CSV.File(joinpath(directory, filepath)) |> DataFrame
-                buy_names = filter(row -> row[:week] == gw && row[:transfer_in] == 1, plan).name |> collect
-                sell_names = filter(row -> row[:week] == gw && row[:transfer_out] == 1, plan).name |> collect
-
-                if isempty(buy_names)
-                    push!(buys, "No transfer")
-                else
-                    push!(buys, join(buy_names, ", "))
-                end
-
-                if isempty(sell_names)
-                    push!(sells, "No transfer")
-                else
-                    push!(sells, join(sell_names, ", "))
-                end
-
-                no_plans += 1
             end
+            if isempty(filter(row -> row.week == gw && row.transfer_in == 1, plan).name)
+                push!(buys, Dict("move" => "No transfer", "iter" => iter))
+                push!(sells, Dict("move" => "No transfer", "iter" => iter))
+                push!(move, Dict("move" => "No transfer", "iter" => iter))
+            else
+                buy_list = filter(row -> row.week == gw && row.transfer_in == 1, plan).name
+                buy = join(buy_list, ", ")
+                push!(buys, Dict("move" => buy, "iter" => iter))
+        
+                sell_list = filter(row -> row.week == gw && row.transfer_out == 1, plan).name
+                sell = join(sell_list, ", ")
+                push!(sells, Dict("move" => sell, "iter" => iter))
+                push!(move, Dict("move" => "$(sell) -> $(buy)", "iter" => iter))
+            end
+            no_plans += 1
         end
-
-        buy_sum = combine(groupby(DataFrame(player=buys), :player), nrow => :PSB)
-        sell_sum = combine(groupby(DataFrame(player=sells), :player), nrow => :PSB)
-        buy_sum[!, :PSB] = ["$(round(buy_sum[x, :PSB] / no_plans * 100))%" for x in 1:nrow(buy_sum)]
-        sell_sum[!, :PSB] = ["$(round(sell_sum[x, :PSB] / no_plans * 100))%" for x in 1:nrow(sell_sum)]
-        buy_sum.PSB_numeric = parse.(Float64, replace.(buy_sum.PSB, "%" => "")) / 100
-        sell_sum.PSB_numeric = parse.(Float64, replace.(sell_sum.PSB, "%" => "")) / 100
-        sort!(buy_sum, order(:PSB_numeric, rev=true))
-        sort!(sell_sum, order(:PSB_numeric, rev=true))
-        select!(buy_sum, Not(:PSB_numeric))
-        select!(sell_sum, Not(:PSB_numeric))
+        
+        iter_scoring = Dict(1 => 3, 2 => 2, 3 => 1)
+        
+        buy_df = DataFrame(buys)
+        buy_pivot = unstack(buy_df, :move, :iter, :iter, fill = 0, renamecols = x -> "iter_$x")
+        iters = sort(unique(buy_df.iter))
+        buy_pivot.PSB = sum.(eachrow(buy_pivot[:, [Symbol("iter_$i") for i in iters]])) / sum(sum.(eachrow(buy_pivot[:, [Symbol("iter_$i") for i in iters]])))
+        buy_pivot.PSB = map(x -> "$(round(Int, x * 100))%", buy_pivot.PSB)
+        buy_pivot.Score = [sum(row[Symbol("iter_$i")] * get(iter_scoring, i, 0) for i in iters) for row in eachrow(buy_pivot)]
+        sort!(buy_pivot, :Score, rev=true)
+        
+        sell_df = DataFrame(sells)
+        sell_pivot = unstack(sell_df, :move, :iter, :iter, fill = 0, renamecols = x -> "iter_$x")
+        iters = sort(unique(sell_df.iter))
+        sell_pivot.PSB = sum.(eachrow(sell_pivot[:, [Symbol("iter_$i") for i in iters]])) / sum(sum.(eachrow(sell_pivot[:, [Symbol("iter_$i") for i in iters]])))
+        sell_pivot.PSB = map(x -> "$(round(Int, x * 100))%", sell_pivot.PSB)
+        sell_pivot.Score = [sum(row[Symbol("iter_$i")] * get(iter_scoring, i, 0) for i in iters) for row in eachrow(sell_pivot)]
+        sort!(sell_pivot, :Score, rev=true)
+        
+        move_df = DataFrame(move)
+        move_pivot = unstack(move_df, :move, :iter, :iter, fill = 0, renamecols = x -> "iter_$x")
+        iters = sort(unique(move_df.iter))
+        move_pivot.PSB = sum.(eachrow(move_pivot[:, [Symbol("iter_$i") for i in iters]])) / sum(sum.(eachrow(move_pivot[:, [Symbol("iter_$i") for i in iters]])))
+        move_pivot.PSB = map(x -> "$(round(Int, x * 100))%", move_pivot.PSB)
+        move_pivot.Score = [sum(row[Symbol("iter_$i")] * get(iter_scoring, i, 0) for i in iters) for row in eachrow(move_pivot)]
+        sort!(move_pivot, :Score, rev=true)
 
  
         println("Buy:")
-        println(join([join(row, "  ") for row in eachrow(buy_sum)], "\n"))
+        show(buy_pivot,maximum_columns_width = 0)
         println()
         
         println("Sell:")
-        println(join([join(row, "  ") for row in eachrow(sell_sum)], "\n"))
+        show(sell_pivot,maximum_columns_width = 0)
         
 
     elseif situation in ["Y", "y"]

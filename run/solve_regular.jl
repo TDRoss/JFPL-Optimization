@@ -191,6 +191,6 @@ function get_fplteam_link(options, response)
     end
 end
 
-# if abspath(PROGRAM_FILE) == @__FILE__    
+if abspath(PROGRAM_FILE) == @__FILE__    
     solve_regular()
-# end
+end
