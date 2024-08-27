@@ -637,6 +637,24 @@ function solve_multi_period_fpl(data, options)
         end
     end
 
+    max_defs_per_team = get(options, "max_defenders_per_team", 3)
+
+    if max_defs_per_team < 3  # only add constraints if necessary
+        # Constraint for regular squad
+        @constraint(model, 
+            [t in teams, w in gameweeks],
+            sum(squad[p,w] for p in players if merged_data[playerinex[p], :name] == t && merged_data[playerinex[p], :Pos] in ["G", "D"]) <= max_defs_per_team,
+            base_name="defenders_per_team_limit"
+        )
+        
+        # Constraint for free hit squad
+        @constraint(model, 
+            [t in teams, w in gameweeks],
+            sum(squad_fh[p,w] for p in players if merged_data[playerinex[p], :name] == t && merged_data[playerinex[p], :Pos] in ["G", "D"]) <= max_defs_per_team * use_fh[w],
+            base_name="defenders_per_team_limit_fh"
+        )
+    end
+
     for booked_transfer in booked_transfers
         transfer_gw = get(booked_transfer, "gw", nothing)
 
@@ -660,11 +678,11 @@ function solve_multi_period_fpl(data, options)
         for gw in gameweeks
             gw_games = [i for i in fixtures if i["gw"] == gw]
             if get(options,"opposing_play_group", "all") == "all"
-                opposing_players = [(p1, p2) for f in gw_games for p1 in players if merged_data[p1, :name] == f["home"] for p2 in players if merged_data[p2, :name] == f["away"]]
+                opposing_players = [(p1, p2) for f in gw_games for p1 in players if merged_data[playerinex[p1], :name] == f["home"] for p2 in players if merged_data[playerinex[p2], :name] == f["away"]]
                 @constraint(model, [p1, p2] in opposing_players, lineup[p1, gw] + lineup[p2, gw] <= 1, base_name="no_opp_$gw")
             elseif get(options, "opposing_play_group", nothing) == "position"
                 opposing_positions = [(1,3), (1,4), (2,3), (2,4), (3,1), (4,1), (3,2), (4,2)]  # gk vs mid, gk vs fwd, def vs mid, def vs fwd
-                opposing_players = [(p1, p2) for f in gw_games for p1 in players if merged_data[p1, :name] == f["home"] for p2 in players if merged_data[p2, :name] == f["away"] && (player_type[p1], player_type[p2]) in opposing_positions]
+                opposing_players = [(p1, p2) for f in gw_games for p1 in players if merged_data[playerinex[p1], :name] == f["home"] for p2 in players if merged_data[playerinex[p2], :name] == f["away"] && (player_type[p1], player_type[p2]) in opposing_positions]
                 @constraint(model, [p1, p2] in opposing_players, lineup[p1, gw] + lineup[p2, gw] <= 1, base_name="no_opp_$gw")
             end
         end
