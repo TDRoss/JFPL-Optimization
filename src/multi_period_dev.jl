@@ -724,10 +724,21 @@ function solve_multi_period_fpl(data, options)
         @constraint(model, [p in players], transfer_out[p, next_gw] == out_players[p])
     end
 
-    # Have 2 free transfers in specific gameweeks
-    if haskey(options, "have_2ft_in_gws")
-        for gw in options["have_2ft_in_gws"]
-            @constraint(model, free_transfers[gw] == 2)
+    # # Have 2 free transfers in specific gameweeks
+    # if haskey(options, "have_2ft_in_gws")
+    #     for gw in options["have_2ft_in_gws"]
+    #         @constraint(model, free_transfers[gw] == 2)
+    #     end
+    # end
+    if haskey(options, "force_ft_state_lb") && !isnothing(options["force_ft_state_lb"])
+        for (gw, ft_pos) in options["force_ft_state_lb"]
+            @constraint(model, free_transfers[gw] >= ft_pos, base_name="cft_lb_$(gw)")
+        end
+    end
+    
+    if haskey(options, "force_ft_state_ub") && !isnothing(options["force_ft_state_ub"])
+        for (gw, ft_pos) in options["force_ft_state_ub"]
+            @constraint(model, free_transfers[gw] <= ft_pos, base_name="cft_ub_$(gw)")
         end
     end
 

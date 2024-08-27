@@ -57,11 +57,13 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
 	    "itb_loss_per_transfer": 0,
 	    "no_future_transfer": false,
 	    "no_transfer_last_gws": null,
+        "force_ft_state_lb": [],
+        "force_ft_state_ub": [],
 	    "have_2ft_in_gws": [],
 	    "randomized": false,
 	    "xmin_lb": 2,
 	    "ev_per_price_cutoff": 20,
-      "bench_weights": {"0": 0.03, "1": 0.21, "2": 0.06, "3": 0.002},
+        "bench_weights": {"0": 0.03, "1": 0.21, "2": 0.06, "3": 0.002},
         "banned": [],
         "banned_next_gw": [],
         "locked": [],
@@ -112,6 +114,10 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
   - `itb_loss_per_transfer`: reduction in ITB amount per scheduled transfers in future
   - `no_future_transfer`: `true` or `false` whether you want to plan future transfers or not
   - `no_transfer_last_gws`: the number of gws at the end of the period you want to ban transfers
+  - `force_ft_state_lb`: list of GWs and minimum number of FTs to force to have (format is (GW, state))  
+    `"force_ft_state":[[4,3], [7,2]]` will force solver to have at least 3 FTs in GW4, and 2 FTs in GW7
+  - `force_ft_state_ub`: list of GWs and maximum number of FTs to force to have (format is (GW, state))  
+    `"force_ft_state":[[4,4], [7,3]]` will force solver to have at most 4 FTs in GW4, and 3 FTs in GW7
   - `have_2ft_in_gws`: list of GWs where you want to have 2 FTs, for example  
     `"have_2ft_in_gws":[38]` will force solver to have 2 FTs at the beginning of GW38
   - `randomized`: `true` or `false` whether you would like to add random noise to EV
