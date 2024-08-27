@@ -6,7 +6,7 @@ This is an algorithm for selecting/planning Fantasy Premier League picks using m
 
 The code is a Julia implementation of a [Python FPL optimization repository](https://github.com/sertalpbilal/FPL-Optimization-Tools)
 
-The algorithm relies on [JuMP](https://github.com/jump-dev/JuMP.jl) to easily swap between different solvers.
+The program relies on [JuMP](https://github.com/jump-dev/JuMP.jl) to easily swap between different solvers.
 
 ## Installation
 
@@ -51,6 +51,7 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
 	    "horizon": 8,
 	    "decay_base": 0.84,
 	    "ft_value": 0.8,
+        "ft_value_list": {},
 	    "ft_use_penalty": 1,
 	    "itb_value": 0.08,
 	    "itb_loss_per_transfer": 0,
@@ -60,17 +61,18 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
 	    "randomized": false,
 	    "xmin_lb": 2,
 	    "ev_per_price_cutoff": 20,
-      "banned": [],
-      "banned_next_gw": [],
-      "locked": [],
-      "locked_next_gw": [],
+      "bench_weights": {"0": 0.03, "1": 0.21, "2": 0.06, "3": 0.002},
+        "banned": [],
+        "banned_next_gw": [],
+        "locked": [],
+        "locked_next_gw": [],
 	    "single_solve": false,
-      "forced_chip_gws": {"bb": [], "wc": [], "fh": [], "tc": []},
-      "run_chip_combinations": {"bb": [], "wc": [], "fh": [], "tc": []},
+        "forced_chip_gws": {"bb": [], "wc": [], "fh": [], "tc": []},
+        "run_chip_combinations": {"bb": [], "wc": [], "fh": [], "tc": []},
 	    "num_transfers": null,
 	    "hit_limit": null,
-      "hit_cost": 4,
-      "ft_custom_value": null,
+        "hit_cost": 4,
+        "ft_custom_value": null,
 	    "use_wc": null,
 	    "use_bb": null,
 	    "use_fh": null,
@@ -89,7 +91,7 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
 	    "iteration": 1,
 	    "iteration_criteria": "this_gw_transfer_in",
 	    "iteration_target": [],
-      "report_decay_base": [0.85, 0.9, 0.95, 1.0, 1.017],
+        "report_decay_base": [0.85, 0.9, 0.95, 1.0, 1.017],
 	    "datasource" : "review",
 	    "data_weights": {"review": 40, "review-odds": 30, "mikkel": 30, "kiwi": 0},
 	    "export_data": "final.csv",
@@ -101,7 +103,11 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
   - `horizon`: length of planning horizon
   - `decay_base`: value assigned to decay rate of expected points
   - `ft_value`: value assigned to the extra free transfer
-  - `ft_use_penalty`: penalty on objective function when an FT is used
+  - `ft_value_list`: values of rolling FTs in different states, for example  
+    `"ft_value_list": {"2": 2.1, "3": 1.8, "4": 1.5, "5": 1.1}`  
+    assigns a value of 2.1 for rolling from 1FT to 2FTs, 1.8 value for rolling from 2FTs to 3FTs, etc...
+  - `ft_use_penalty`: penalty on objective function when an FT is used  
+    this parameter ensures that no future transfer (excluding this GW) is scheduled unless the gain is above this threshold
   - `itb_value`: value assigned to having 1.0 extra budget
   - `itb_loss_per_transfer`: reduction in ITB amount per scheduled transfers in future
   - `no_future_transfer`: `true` or `false` whether you want to plan future transfers or not
