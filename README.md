@@ -57,6 +57,7 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
 	    "itb_loss_per_transfer": 0,
 	    "no_future_transfer": false,
 	    "no_transfer_last_gws": null,
+        "no_transfer_by_position": null,
         "force_ft_state_lb": [],
         "force_ft_state_ub": [],
 	    "have_2ft_in_gws": [],
@@ -90,7 +91,7 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
 	    "no_opposing_play": false,
 	    "pick_prices": {"G": "", "D": "", "M": "", "F": ""},
 	    "no_gk_rotation_after": null,
-      "max_defenders_per_team": 3,
+        "max_defenders_per_team": 3,
 	    "iteration": 1,
 	    "iteration_criteria": "this_gw_transfer_in",
 	    "iteration_target": [],
@@ -131,6 +132,7 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
   - `locked_next_gw`: List of player IDs to force just for the next gameweek. See `banned_next_gw` for extended usage
   - `future_transfer_limit`: upper bound how many transfers are allowed in future GWs
   - `no_transfer_gws`: list of GW numbers where transfers are not allowed
+  - `no_transfer_by_position`: list of positions to not transfer in/out. Valid positions: `["G", "D", "M", "F"]`. E.g. to block out goalkeeper transfers set this option to `["G"]`
   - `booked_transfers`: list of booked transfers for future gameweeks, needs to have a `gw` key and at least one of `transfer_in` or `transfer_out` with the player ID. For example, to book a transfer of buying Kane (427) on GW5 and selling him on GW7, use  
     `"booked_transfers": [{"gw": 5, "transfer_in": 427}, {"gw": 7, "transfer_out": 427}]`
   - `only_booked_transfers`: (for next GW) use only booked transfers

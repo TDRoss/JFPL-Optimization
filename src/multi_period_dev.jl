@@ -637,6 +637,17 @@ function solve_multi_period_fpl(data, options)
         end
     end
 
+    if haskey(options, "no_transfer_by_position") && !isnothing(options["no_transfer_by_position"])
+        if length(options["no_transfer_by_position"]) > 0
+            # ignore w=1 as you must transfer in a full squad
+            @constraint(model, 
+                [p in players, w in gameweeks; w > 1 && merged_data[playerinex[p], :Pos] in options["no_transfer_by_position"]],
+                transfer_in[p,w] <= use_wc[w],
+                base_name="no_tr_by_pos"
+            )
+        end
+    end
+
     max_defs_per_team = get(options, "max_defenders_per_team", 3)
 
     if max_defs_per_team < 3  # only add constraints if necessary
