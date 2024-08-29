@@ -36,7 +36,7 @@ instantiate
   after replacing `MY_TEAM_ID` with your team id.
   Copy the content of the page into `data/team.json` file, by creating one.
 
-Note: the HiGHS (default) and CBC solvers are installed with this project. If you would like to try other solvers, please see the JuMP [documentation](https://jump.dev/JuMP.jl/stable/packages/solvers/) on what is available and their installation dependencies.
+Note: HiGHS (default) is installed with this project. If you would like to try other solvers, please see the JuMP [documentation](https://jump.dev/JuMP.jl/stable/packages/solvers/) on what is available and their installation dependencies.
 
 
 ## Instructions
@@ -89,6 +89,7 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
 	    "no_trs_except_wc": false,
 	    "preseason": false,
 	    "no_opposing_play": false,
+        "opposing_play_group": "position",
 	    "pick_prices": {"G": "", "D": "", "M": "", "F": ""},
 	    "no_gk_rotation_after": null,
         "max_defenders_per_team": 3,
@@ -178,9 +179,7 @@ Note: the HiGHS (default) and CBC solvers are installed with this project. If yo
     - `review-odds` requires `fplreview-odds.csv` file
     - `kiwi` requires `kiwi.csv` file
     - `mikkel` requires `TransferAlgorithm.csv`, file
-    - `mixed` requires an additional parameter `data_weights`, and any corresponding files mentioned above
-  
-    under `data` folder to be present
+    - `mixed` requires an additional parameter `data_weights`, and any corresponding files mentioned above under `data` folder to be present
   - `data_weights`: weight percentage for each data source, given as a dictionary, where keys should be one of valid data sources
   - `export_data`: option for exporting final data as a CSV file (when using `mixed` data)
   - `team_data`: option for using `team_id` value rather than the `team.json` file. Uses `team.json` by default, set value to `ID` to use `team_id`. Note that with this method, any transfers already made this gameweek won't be taken into account, so they must be added to `booked_transfers`
