@@ -179,15 +179,37 @@ function prep_data(my_data::Dict{String, Any}, options::Dict{String, Any})
     sort!(merged_data, :total_ev, rev=true)
 
 
+
+    locked_next_gw = [Int(i) for i in get(options, "locked_next_gw", [])]
+    safe_players_due_price = Int[]
+
+    for (pos, vals) in get(options, "pick_prices", Dict())
+        isnothing(vals) || vals == "" && continue
+        price_vals = [parse(Float64, i) for i in split(vals, ',')]
+        pp = merged_data[
+            (merged_data.Pos .== pos) .& 
+            (in.(merged_data.now_cost ./ 10, Ref(price_vals))), 
+            :review_id
+        ]
+        append!(safe_players_due_price, pp)
+    end
+
+    initial_squad = [Int(i["element"]) for i in my_data["picks"]]
+    safe_players = vcat(
+        initial_squad, 
+        get(options, "locked", []), 
+        get(options, "keep", []), 
+        locked_next_gw, 
+        safe_players_due_price
+    )
+
     # Filter players by xMin
-    initial_squad = [x["element"] for x in my_data["picks"]]
     xmin_lb = get(options, "xmin_lb", 1)
     println(size(merged_data, 1), " total players (before)")
-    filter!(row -> row[:total_min] >= xmin_lb || row[:id] in initial_squad, merged_data)
+    filter!(row -> row[:total_min] >= xmin_lb || row[:id] in safe_players, merged_data)
 
     # Filter by ev per price
     ev_per_price_cutoff = get(options, "ev_per_price_cutoff", 0)
-    safe_players = vcat(initial_squad, get(options, "locked", Int[]), get(options, "banned", Int[]), get(options, "keep", Int[]))
     for bt in get(options, "booked_transfers", [])
         if haskey(bt, "transfer_in")
             push!(safe_players, bt["transfer_in"])
