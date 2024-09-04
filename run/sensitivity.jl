@@ -74,11 +74,11 @@ function read_sensitivity(options)
 
  
         println("Buy:")
-        show(buy_pivot,maximum_columns_width = 0)
+        show(buy_pivot,maximum_columns_width = 0,allrows=true)
         println()
         
         println("Sell:")
-        show(sell_pivot,maximum_columns_width = 0)
+        show(sell_pivot,maximum_columns_width = 0,allrows=true)
         
 
     elseif situation in ["Y", "y"]

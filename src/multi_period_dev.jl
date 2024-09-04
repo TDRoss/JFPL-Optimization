@@ -180,7 +180,7 @@ function prep_data(my_data::Dict{String, Any}, options::Dict{String, Any})
 
 
 
-    locked_next_gw = [Int(i) for i in get(options, "locked_next_gw", [])]
+    locked_next_gw = [isa(i, Vector) ? Int(i[1]) : Int(i) for i in get(options, "locked_next_gw", [])]
     safe_players_due_price = Int[]
 
     for (pos, vals) in get(options, "pick_prices", Dict())
@@ -406,6 +406,7 @@ function solve_multi_period_fpl(data, options)
     bought_amount = Dict(w => sum(buy_price[p] * transfer_in[p, w] for p in players) for w in gameweeks)
     points_player_week = Dict((p, w) => merged_data[playerinex[p], "$(w)_Pts"] for p in players for w in gameweeks)
     minutes_player_week = Dict((p, w) => merged_data[playerinex[p], "$(w)_xMins"] for p in players for w in gameweeks)
+    player_team = Dict(p => merged_data[playerinex[p], "name"] for p in players)
     squad_count = Dict(w => sum(squad[p, w] for p in players) for w in gameweeks)
     squad_fh_count = Dict(w => sum(squad_fh[p, w] for p in players) for w in gameweeks)
     number_of_transfers = Dict(w => sum(transfer_out[p, w] for p in players) for w in gameweeks)
@@ -475,8 +476,8 @@ function solve_multi_period_fpl(data, options)
     @constraint(model, [t in element_types, w in gameweeks], lineup_type_count[t,w] <= type_data[t, "squad_max_play"] + use_bb[w])
     @constraint(model, [t in element_types, w in gameweeks], squad_type_count[t,w] == type_data[t, "squad_select"])
     @constraint(model, [t in element_types, w in gameweeks], squad_fh_type_count[t,w] == type_data[t, "squad_select"] * use_fh[w])
-    @constraint(model, [t in teams, w in gameweeks], sum(squad[p,w] for p in players if merged_data[playerinex[p], "name"] == t) <= 3)
-    @constraint(model, [t in teams, w in gameweeks], sum(squad_fh[p,w] for p in players if merged_data[playerinex[p], "name"] == t) <= 3 * use_fh[w])
+    @constraint(model, [t in teams, w in gameweeks], sum(squad[p,w] for p in players if player_team[p] == t) <= 3, base_name="team_limit")
+    @constraint(model, [t in teams, w in gameweeks], sum(squad_fh[p,w] for p in players if player_team[p] == t) <= 3 * use_fh[w], base_name="team_limit_fh")
 
     ## Transfer constraints
     @constraint(model, [p in players, w in gameweeks], squad[p,w] == squad[p,w-1] + transfer_in[p,w] - transfer_out[p,w])
@@ -639,7 +640,12 @@ function solve_multi_period_fpl(data, options)
     end
 
     if ~isnothing(options["hit_limit"])
-        @constraint(model, sum(penalized_transfers[w] for w in gameweeks) <= options["hit_limit"])
+        @constraint(model, sum(penalized_transfers[w] for w in gameweeks) <= int(options["hit_limit"]))
+    end
+
+    if ~isnothing(options["weekly_hit_limit"])
+        weekly_hit_limit = parse(Int, options["weekly_hit_limit"])
+        @constraint(model, gw_hit_lim[w in gameweeks], penalized_transfers[w] <= int(weekly_hit_limit))
     end
 
     # if haskey(options, "ft_custom_value") && options["ft_custom_value"] !== nothing
@@ -676,14 +682,14 @@ function solve_multi_period_fpl(data, options)
         # Constraint for regular squad
         @constraint(model, 
             [t in teams, w in gameweeks],
-            sum(squad[p,w] for p in players if merged_data[playerinex[p], :name] == t && merged_data[playerinex[p], :Pos] in ["G", "D"]) <= max_defs_per_team,
+            sum(squad[p,w] for p in players if player_team[p] == t && merged_data[playerinex[p], :Pos] in ["G", "D"]) <= max_defs_per_team,
             base_name="defenders_per_team_limit"
         )
         
         # Constraint for free hit squad
         @constraint(model, 
             [t in teams, w in gameweeks],
-            sum(squad_fh[p,w] for p in players if merged_data[playerinex[p], :name] == t && merged_data[playerinex[p], :Pos] in ["G", "D"]) <= max_defs_per_team * use_fh[w],
+            sum(squad_fh[p,w] for p in players if player_team[p] == t && merged_data[playerinex[p], :Pos] in ["G", "D"]) <= max_defs_per_team * use_fh[w],
             base_name="defenders_per_team_limit_fh"
         )
     end
@@ -707,19 +713,67 @@ function solve_multi_period_fpl(data, options)
     end
 
     # No opposing play
+    cp_penalty = Dict()
     if get(options, "no_opposing_play", false)
+        gw_opp_teams = Dict(w => [(f["home"], f["away"]) for f in fixtures if f["gw"] == w] ∪ 
+                         [(f["away"], f["home"]) for f in fixtures if f["gw"] == w] for w in gameweeks)
         for gw in gameweeks
             gw_games = [i for i in fixtures if i["gw"] == gw]
             if get(options,"opposing_play_group", "all") == "all"
-                opposing_players = [(p1, p2) for f in gw_games for p1 in players if merged_data[playerinex[p1], :name] == f["home"] for p2 in players if merged_data[playerinex[p2], :name] == f["away"]]
+                opposing_players = [(p1, p2) for p1 in players for p2 in players if (player_team[p1], player_team[p2]) in gw_opp_teams]
                 @constraint(model, [p1, p2] in opposing_players, lineup[p1, gw] + lineup[p2, gw] <= 1, base_name="no_opp_$gw")
             elseif get(options, "opposing_play_group", nothing) == "position"
                 opposing_positions = [(1,3), (1,4), (2,3), (2,4), (3,1), (4,1), (3,2), (4,2)]  # gk vs mid, gk vs fwd, def vs mid, def vs fwd
-                opposing_players = [(p1, p2) for f in gw_games for p1 in players if merged_data[playerinex[p1], :name] == f["home"] for p2 in players if merged_data[playerinex[p2], :name] == f["away"] && (player_type[p1], player_type[p2]) in opposing_positions]
+                opposing_players = [(p1, p2) for p1 in players for p2 in players
+                    if (player_team[p1], player_team[p2]) in gw_opp_teams && 
+                       (player_type[p1], player_type[p2]) in opposing_positions]
+                opposing_players = [(p1, p2) for f in gw_games for p1 in players if player_team[p1] == f["home"] for p2 in players if player_team[p2] == f["away"] && (player_type[p1], player_type[p2]) in opposing_positions]
                 @constraint(model, [p1, p2] in opposing_players, lineup[p1, gw] + lineup[p2, gw] <= 1, base_name="no_opp_$gw")
             end
         end
+    elseif get(options, "no_opposing_play", nothing) == "penalty"
+        gw_opp_teams = Dict(w => [(f["home"], f["away"]) for f in fixtures if f["gw"] == w] ∪ 
+                                [(f["away"], f["home"]) for f in fixtures if f["gw"] == w] for w in gameweeks)
+        
+        if get(options, "opposing_play_group", nothing) == "all"
+            cp_list = [(p1, p2, w)
+                for p1 in players
+                for p2 in players
+                for w in gameweeks
+                if (player_team[p1], player_team[p2]) in gw_opp_teams[w] &&
+                minutes_player_week[p1,w] > 0 && minutes_player_week[p2,w] > 0
+            ]
+        elseif get(options, "opposing_play_group", "position") == "position"
+            opposing_positions = [(1,3),(1,4),(2,3),(2,4),(3,1),(4,1),(3,2),(4,2)]
+            cp_list = [(p1, p2, w)
+                for p1 in players
+                for p2 in players
+                for w in gameweeks
+                if (player_team[p1], player_team[p2]) in gw_opp_teams[w] &&
+                minutes_player_week[p1,w] > 0 && minutes_player_week[p2,w] > 0 &&
+                (player_type[p1], player_type[p2]) in opposing_positions
+            ]
+        end
+        
+        cp_pen_var = @variable(model, [cp_list], binary=true, base_name="cp_v")
+        opposing_play_penalty = get(options, "opposing_play_penalty", 0.5)
+        cp_penalty = Dict(w => opposing_play_penalty * sum(cp_pen_var[p1,p2,w1] for (p1,p2,w1) in cp_list if w1 == w) for w in gameweeks)
+        
+        @constraint(model, [t in cp_list], lineup[t[1],t[3]] + lineup[t[2],t[3]] <= 1 + cp_pen_var[t])
+        @constraint(model, [t in cp_list], cp_pen_var[t] <= lineup[t[1],t[3]])
+        @constraint(model, [t in cp_list], cp_pen_var[t] <= lineup[t[2],t[3]])
     end
+
+    if get(options, "double_defense_pick", false)
+        team_players = Dict(t => [p for p in players if player_team[p] == t] for t in teams)
+        gk_df_players = Dict(t => [p for p in team_players[t] if player_type[p] == 1 || player_type[p] == 2] for t in teams)
+        weekly_sum = Dict((t,w) => sum(lineup[p,w] for p in gk_df_players[t]) for t in teams, w in gameweeks)
+        
+        @variable(model, def_aux[teams, gameweeks], binary=true)
+        @constraint(model, [(t,w) in keys(weekly_sum)], weekly_sum[t,w] <= 3 * def_aux[t,w])
+        @constraint(model, [(t,w) in keys(weekly_sum)], weekly_sum[t,w] >= 2 - 3 * (1 - def_aux[t,w]))
+    end    
+    
 
     # Pick prices
     if haskey(options, "pick_prices")
@@ -822,7 +876,7 @@ function solve_multi_period_fpl(data, options)
     # Objectives
     hit_cost = get(options,"hit_cost", 4) 
     gw_xp = Dict(w => sum(points_player_week[p, w] * (lineup[p, w] + captain[p, w] + 0.1 * vicecap[p, w] + use_tc[p, w] + sum(bench_weights[o] * bench[p, w, o] for o in order)) for p in players) for w in gameweeks)
-    gw_total = Dict(w => gw_xp[w] - hit_cost * penalized_transfers[w] + gw_ft_gain[w] - ft_penalty[w] + itb_value * in_the_bank[w] for w in gameweeks)
+    gw_total = Dict(w => gw_xp[w] - hit_cost * penalized_transfers[w] + gw_ft_gain[w] - ft_penalty[w] + itb_value * in_the_bank[w] - get(cp_penalty, w, 0) for w in gameweeks)
 
     if objective == "regular"
         total_xp = sum(gw_total[w] for w in gameweeks)
