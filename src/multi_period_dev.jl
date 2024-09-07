@@ -63,6 +63,7 @@ function generate_team_json(team_id::Int)
     if !isempty(fh)
         fh = fh[1]["event"]
     end
+    wc_gws = [x.event for x in chips if x.name == "wildcard"]
 
     squad = Dict(x["element"] => start_prices[x["element"]] for x in gw1["picks"])
 
@@ -77,7 +78,7 @@ function generate_team_json(team_id::Int)
         squad[t["element_in"]] = t["element_in_cost"]
     end
 
-    fts = calculate_fts(transfers, next_gw, fh)
+    fts = calculate_fts(transfers, next_gw, fh, wc_gws)
     my_data = Dict(
         "chips" => [],
         "picks" => [],
@@ -103,7 +104,7 @@ function generate_team_json(team_id::Int)
     return my_data
 end
 
-function calculate_fts(transfers::Vector{Dict{String, Int}}, next_gw::Int, fh::Int)
+function calculate_fts(transfers::Vector{Dict{String, Int}}, next_gw::Int, fh::Int, wc_gws::Int)
     n_transfers = Dict(gw => 0 for gw in 2:(next_gw - 1))
     for t in transfers
         n_transfers[t["event"]] += 1
@@ -112,14 +113,18 @@ function calculate_fts(transfers::Vector{Dict{String, Int}}, next_gw::Int, fh::I
     fts[2] = 1
     for i in 3:next_gw
         if (i - 1) == fh
-            fts[i] = 1
+            fts[i] = fts[i-1]
+            continue
+        end
+        if i-1 in wc_gws
+            fts[i] = fts[i-1]
             continue
         end
         fts[i] = fts[i - 1]
         fts[i] -= n_transfers[i - 1]
         fts[i] = max(fts[i], 0)
         fts[i] += 1
-        fts[i] = min(fts[i], 2)
+        fts[i] = min(fts[i], 5)
     end
     return fts[next_gw]
 end
@@ -265,7 +270,6 @@ function prep_data(my_data::Dict{String, Any}, options::Dict{String, Any})
     # If wildcard is active
     for c in my_data["chips"]
         if c["name"] == "wildcard" && c["status_for_entry"] == "active"
-            ft = 1
             options["use_wc"] = gw
             if get(options, "chip_limits", Dict("wc" => 0))["wc"] == 0
                 options["chip_limits"]["wc"] = 1
@@ -297,6 +301,16 @@ function prep_data(my_data::Dict{String, Any}, options::Dict{String, Any})
 end
     
 function solve_multi_period_fpl(data, options)
+
+    try
+        commit_hash = readchomp(`git rev-parse --short HEAD`)
+        commit_count = readchomp(`git rev-list --count HEAD`)
+        version = "$(commit_count) - $(commit_hash)"
+        println("Version: $version")
+    catch e
+        @warn "Failed to get Git version: $(e)"
+    end
+
     # Arguments
     # problem_id = get_random_id(5)
     horizon = get(options, "horizon", 3)
@@ -612,40 +626,60 @@ function solve_multi_period_fpl(data, options)
     end
 
     # Optional constraints
-    if haskey(options, "banned")
+    if !isempty(get(options, "banned", []))
+        println("OC - Banned")
         banned_players = options["banned"]
-        @constraint(model, [p in banned_players], sum(squad[p, w] for w in gameweeks) == 0)
-        @constraint(model, [p in banned_players], sum(squad_fh[p, w] for w in gameweeks) == 0)
+        @constraint(model, [p in banned_players], sum(squad[p, w] for w in gameweeks) == 0, base_name = "ban_player")
+        @constraint(model, [p in banned_players], sum(squad_fh[p, w] for w in gameweeks) == 0, base_name = "ban_player_fh")
     end
 
-    if haskey(options, "locked")
+    if !isempty(get(options, "banned_next_gw", []))
+        println("OC - Banned Next GW")
+        banned_next_gw = options["banned_next_gw"]
+        @constraint(model, [p in banned_next_gw], squad[p, gameweeks[1]] == 1,base_name="ban_player_specified_gw")
+    end
+
+    if !isempty(get(options, "locked", []))
+        println("OC - Locked")
         locked_players = options["locked"]
-        @constraint(model, [p in locked_players, w in gameweeks], squad[p, w] + squad_fh[p, w] == 1)
+        @constraint(model, [p in locked_players, w in gameweeks], squad[p, w] + squad_fh[p, w] == 1, base_name = "lock_player")
+    end
+
+    if !isempty(get(options, "locked_next_gw", []))
+        println("OC - Locked Next GW")
+        locked_next_gw = options["locked_next_gw"]
+        @constraint(model, [p in locked_next_gw], squad[p, gameweeks[1]] == 1, base_name = "lock_player_specified_gw")
     end
 
     if get(options, "no_future_transfer", false)
+        println("OC - No Future Tr")
         use_wc_val = get(options, "use_wc", nothing)
-        @constraint(model, sum(transfer_in[p, w] for p in players for w in gameweeks if w > next_gw && w != use_wc_val) == 0)
+        @constraint(model, sum(transfer_in[p, w] for p in players for w in gameweeks if w > next_gw && w != use_wc_val) == 0, base_name= "no_future_transfer")
     end
 
-    if ~isnothing(options["no_transfer_last_gws"])
+    if get(options, "no_transfer_last_gws", nothing) !== nothing
+        println("OC - No Tr Last GW")
         no_tr_gws = options["no_transfer_last_gws"]
         if horizon > no_tr_gws
-            @constraint(model,[w in gameweeks[gameweeks .> last_gw - no_tr_gws]], sum(transfer_in[p, w] for p in players) <= 15 * use_wc[w])
+            @constraint(model,[w in gameweeks[gameweeks .> last_gw - no_tr_gws]], sum(transfer_in[p, w] for p in players) <= 15 * use_wc[w], base_name = "tr_ban_gws")
         end
     end
 
-    if ~isnothing(options["num_transfers"])
-        @constraint(model, sum(transfer_in[p, next_gw] for p in players) == options["num_transfers"])
+    if get(options, "num_transfers", nothing) !== nothing
+        println("OC - Num Transfers")
+        @constraint(model, sum(transfer_in[p, next_gw] for p in players) == options["num_transfers"], base_name="tr limit")
     end
 
-    if ~isnothing(options["hit_limit"])
-        @constraint(model, sum(penalized_transfers[w] for w in gameweeks) <= int(options["hit_limit"]))
+
+    if get(options, "hit_limit", nothing) !== nothing
+        println("OC - Hit Limit")
+        @constraint(model, sum(penalized_transfers[w] for w in gameweeks) <= int(options["hit_limit"]), base_name = "horizon_hit_limit")
     end
 
-    if ~isnothing(options["weekly_hit_limit"])
+    if get(options, "weekly_hit_limit", nothing) !== nothing
+        println("OC - Weekly Hit Limit")
         weekly_hit_limit = parse(Int, options["weekly_hit_limit"])
-        @constraint(model, gw_hit_lim[w in gameweeks], penalized_transfers[w] <= int(weekly_hit_limit))
+        @constraint(model, gw_hit_lim[w in gameweeks], penalized_transfers[w] <= int(weekly_hit_limit), base_name ="gw_hit_lim")
     end
 
     # if haskey(options, "ft_custom_value") && options["ft_custom_value"] !== nothing
@@ -653,25 +687,27 @@ function solve_multi_period_fpl(data, options)
     #     ft_gw_value = merge(Dict(gw => ft_value for gw in gameweeks), ft_custom_value)
     # end
 
-    if ~isnothing(options["future_transfer_limit"])
+    if get(options, "future_transfer_limit", nothing) !== nothing
+        println("OC - Future Transfer Limit")
         @constraint(model, 
-            sum(transfer_in[p,w] for p in players for w in gameweeks if w > next_gw && w != get(options, "use_wc", 0)) <= options["future_transfer_limit"]
-        )
+            sum(transfer_in[p,w] for p in players for w in gameweeks if w > next_gw && w != get(options, "use_wc", 0)) <= options["future_transfer_limit"],
+        base_name = "future_tr_limit")
     end
 
-    if haskey(options, "no_transfer_gws")
+    if !isempty(get(options, "no_transfer_gws", []))
+        println("OC - No Transfer GWs")
         if length(options["no_transfer_gws"]) > 0
-            @constraint(model, sum(transfer_in[p, w] for p in players for w in options["no_transfer_gws"]) == 0)
+            @constraint(model, sum(transfer_in[p, w] for p in players for w in options["no_transfer_gws"]) == 0, base_name = "banned_gws_for_tr")
         end
     end
 
-    if haskey(options, "no_transfer_by_position") && !isnothing(options["no_transfer_by_position"])
+    if !isempty(get(options, "no_transfer_by_position", []))
+        println("OC - No Transfer By Position")
         if length(options["no_transfer_by_position"]) > 0
             # ignore w=1 as you must transfer in a full squad
             @constraint(model, 
                 [p in players, w in gameweeks; w > 1 && merged_data[playerinex[p], :Pos] in options["no_transfer_by_position"]],
-                transfer_in[p,w] <= use_wc[w],
-                base_name="no_tr_by_pos"
+                transfer_in[p,w] <= use_wc[w], base_name="no_tr_by_pos"     
             )
         end
     end
@@ -679,6 +715,7 @@ function solve_multi_period_fpl(data, options)
     max_defs_per_team = get(options, "max_defenders_per_team", 3)
 
     if max_defs_per_team < 3  # only add constraints if necessary
+        println("OC - Max Defs Per Team")
         # Constraint for regular squad
         @constraint(model, 
             [t in teams, w in gameweeks],
@@ -694,7 +731,13 @@ function solve_multi_period_fpl(data, options)
         )
     end
 
+    btprinted = false
     for booked_transfer in booked_transfers
+        if !btprinted
+            prtinln("OC - Booked Transfers")
+            btprinted = true
+        end
+
         transfer_gw = get(booked_transfer, "gw", nothing)
 
         if transfer_gw === nothing
@@ -715,6 +758,7 @@ function solve_multi_period_fpl(data, options)
     # No opposing play
     cp_penalty = Dict()
     if get(options, "no_opposing_play", false)
+        println("OC - No Opposing Play")
         gw_opp_teams = Dict(w => [(f["home"], f["away"]) for f in fixtures if f["gw"] == w] ∪ 
                          [(f["away"], f["home"]) for f in fixtures if f["gw"] == w] for w in gameweeks)
         for gw in gameweeks
@@ -732,6 +776,7 @@ function solve_multi_period_fpl(data, options)
             end
         end
     elseif get(options, "no_opposing_play", nothing) == "penalty"
+        println("OC - Penalty Opposing Play")
         gw_opp_teams = Dict(w => [(f["home"], f["away"]) for f in fixtures if f["gw"] == w] ∪ 
                                 [(f["away"], f["home"]) for f in fixtures if f["gw"] == w] for w in gameweeks)
         
@@ -765,6 +810,8 @@ function solve_multi_period_fpl(data, options)
     end
 
     if get(options, "double_defense_pick", false)
+        println("OC - Double Defense Pick")
+
         team_players = Dict(t => [p for p in players if player_team[p] == t] for t in teams)
         gk_df_players = Dict(t => [p for p in team_players[t] if player_type[p] == 1 || player_type[p] == 2] for t in teams)
         weekly_sum = Dict((t,w) => sum(lineup[p,w] for p in gk_df_players[t]) for t in teams, w in gameweeks)
@@ -776,7 +823,8 @@ function solve_multi_period_fpl(data, options)
     
 
     # Pick prices
-    if haskey(options, "pick_prices")
+    if get(options, "pick_prices", nothing) ∉ [nothing, Dict("G" => "", "D" => "", "M" => "", "F" => "")]
+        println("OC - Pick Prices")
         buffer = 0.2
         price_choices = options["pick_prices"]
         for (pos, val) in price_choices
@@ -795,7 +843,8 @@ function solve_multi_period_fpl(data, options)
     end
 
     # No GK rotation after
-    if ~isnothing(options["no_gk_rotation_after"])
+    if get(options, "no_gk_rotation_after", nothing) !== nothing
+        println("OC - No GK Rotation")
         target_gw = parse(Int, options["no_gk_rotation_after"])
         players_gk = [p for p in players if player_type[p] == 1]
         for p in players_gk
@@ -804,13 +853,15 @@ function solve_multi_period_fpl(data, options)
     end
 
     # No chip in specific gameweeks
-    if haskey(options, "no_chip_gws") && length(options["no_chip_gws"]) > 0
+    if length(get(options,"no_chip_gws",[])) > 0
+        println("OC - No Chip GWs")
         no_chip_gws = options["no_chip_gws"]
         @constraint(model, sum(use_bb[w] + use_wc[w] + use_fh[w] for w in no_chip_gws) == 0)
     end
 
     # Only booked transfers
     if get(options, "only_booked_transfers", false)
+        println("OC - Only Booked Transfers")
         forced_in = []
         forced_out = []
         for bt in get(options, "booked_transfers", [])
@@ -835,13 +886,15 @@ function solve_multi_period_fpl(data, options)
     #         @constraint(model, free_transfers[gw] == 2)
     #     end
     # end
-    if haskey(options, "force_ft_state_lb") && !isnothing(options["force_ft_state_lb"])
+    if !isempty(get(options,"force_ft_state_lb", []))
+        println("OC - Force FT State LB")
         for (gw, ft_pos) in options["force_ft_state_lb"]
             @constraint(model, free_transfers[gw] >= ft_pos, base_name="cft_lb_$(gw)")
         end
     end
     
-    if haskey(options, "force_ft_state_ub") && !isnothing(options["force_ft_state_ub"])
+    if !isempty(get(options,"force_ft_state_ub",[]))
+        println("OC - Force FT State UB")
         for (gw, ft_pos) in options["force_ft_state_ub"]
             @constraint(model, free_transfers[gw] <= ft_pos, base_name="cft_ub_$(gw)")
         end
@@ -849,6 +902,7 @@ function solve_multi_period_fpl(data, options)
 
     # No transfers except wildcard
     if get(options, "no_trs_except_wc", false)
+        println("OC - No Trs Except WC")
         @constraint(model, [w in gameweeks], number_of_transfers[w] <= 15 * use_wc[w])
     end
 
@@ -857,21 +911,12 @@ function solve_multi_period_fpl(data, options)
     for s in ft_states
         ft_state_value[s] = get(ft_state_value, s-1, 0) + get(ft_value_list, string(s), ft_value)
     end
-    println("Using FT state values of $ft_state_value")
+    println("Using FT state values of $(sort(collect(ft_state_value)))")
 
     gw_ft_value = Dict(w => sum(ft_state_value[s] * free_transfers_state[w,s] for s in ft_states) for w in gameweeks)
     gw_ft_gain = Dict(w => gw_ft_value[w] - get(gw_ft_value, w-1, 0) for w in gameweeks)
 
-    if haskey(options, "banned_next_gw") && !isnothing(options["banned_next_gw"])
-        banned_next_gw = options["banned_next_gw"]
-        @constraint(model, [p in banned_next_gw], squad[p, gameweeks[1]] == 1,base_name="ban_player_specified_gw")
-    end
 
-    
-    if haskey(options, "locked_next_gw") && !isnothing(options["locked_next_gw"])
-        locked_next_gw = options["locked_next_gw"]
-        @constraint(model, [p in locked_next_gw], squad[p, gameweeks[1]] == 1, base_name = "lock_player_specified_gw")
-    end
 
     # Objectives
     hit_cost = get(options,"hit_cost", 4) 
