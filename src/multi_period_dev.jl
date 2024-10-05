@@ -757,7 +757,7 @@ function solve_multi_period_fpl(data, options)
 
     # No opposing play
     cp_penalty = Dict()
-    if get(options, "no_opposing_play", false)
+    if get(options, "no_opposing_play", false) == true
         println("OC - No Opposing Play")
         gw_opp_teams = Dict(w => [(f["home"], f["away"]) for f in fixtures if f["gw"] == w] ∪ 
                          [(f["away"], f["home"]) for f in fixtures if f["gw"] == w] for w in gameweeks)
@@ -790,20 +790,21 @@ function solve_multi_period_fpl(data, options)
             ]
         elseif get(options, "opposing_play_group", "position") == "position"
             opposing_positions = [(1,3),(1,4),(2,3),(2,4),(3,1),(4,1),(3,2),(4,2)]
-            cp_list = [(p1, p2, w)
+            cp_list = [
+                (p1, p2, w)
                 for p1 in players
                 for p2 in players
                 for w in gameweeks
                 if (player_team[p1], player_team[p2]) in gw_opp_teams[w] &&
-                minutes_player_week[p1,w] > 0 && minutes_player_week[p2,w] > 0 &&
-                (player_type[p1], player_type[p2]) in opposing_positions
+                   minutes_player_week[p1,w] > 0 && minutes_player_week[p2,w] > 0 &&
+                   (player_type[p1], player_type[p2]) in opposing_positions
             ]
         end
         
-        cp_pen_var = @variable(model, [cp_list], binary=true, base_name="cp_v")
+        @variable(model, cp_pen_var[cp_list], Bin)
         opposing_play_penalty = get(options, "opposing_play_penalty", 0.5)
-        cp_penalty = Dict(w => opposing_play_penalty * sum(cp_pen_var[p1,p2,w1] for (p1,p2,w1) in cp_list if w1 == w) for w in gameweeks)
-        
+        cp_penalty = Dict(w => opposing_play_penalty * sum(cp_pen_var[(p1,p2,w1)] for (p1,p2,w1) in cp_list if w1 == w) for w in gameweeks)
+
         @constraint(model, [t in cp_list], lineup[t[1],t[3]] + lineup[t[2],t[3]] <= 1 + cp_pen_var[t])
         @constraint(model, [t in cp_list], cp_pen_var[t] <= lineup[t[1],t[3]])
         @constraint(model, [t in cp_list], cp_pen_var[t] <= lineup[t[2],t[3]])
