@@ -764,15 +764,15 @@ function solve_multi_period_fpl(data, options)
         for gw in gameweeks
             gw_games = [i for i in fixtures if i["gw"] == gw]
             if get(options,"opposing_play_group", "all") == "all"
-                opposing_players = [(p1, p2) for p1 in players for p2 in players if (player_team[p1], player_team[p2]) in gw_opp_teams]
-                @constraint(model, [p1, p2] in opposing_players, lineup[p1, gw] + lineup[p2, gw] <= 1, base_name="no_opp_$gw")
+                opposing_players = [(p1, p2) for p1 in players for p2 in players if (player_team[p1], player_team[p2]) in gw_opp_teams[gw]]
+                @constraint(model, [(p1, p2) in opposing_players], lineup[p1, gw] + lineup[p2, gw] <= 1,base_name = "no_opp_$(gw)")
             elseif get(options, "opposing_play_group", nothing) == "position"
                 opposing_positions = [(1,3), (1,4), (2,3), (2,4), (3,1), (4,1), (3,2), (4,2)]  # gk vs mid, gk vs fwd, def vs mid, def vs fwd
                 opposing_players = [(p1, p2) for p1 in players for p2 in players
-                    if (player_team[p1], player_team[p2]) in gw_opp_teams && 
+                    if (player_team[p1], player_team[p2]) in gw_opp_teams[gw] && 
                        (player_type[p1], player_type[p2]) in opposing_positions]
                 opposing_players = [(p1, p2) for f in gw_games for p1 in players if player_team[p1] == f["home"] for p2 in players if player_team[p2] == f["away"] && (player_type[p1], player_type[p2]) in opposing_positions]
-                @constraint(model, [p1, p2] in opposing_players, lineup[p1, gw] + lineup[p2, gw] <= 1, base_name="no_opp_$gw")
+                @constraint(model, [(p1, p2) in opposing_players], lineup[p1, gw] + lineup[p2, gw] <= 1,base_name = "no_opp_$(gw)")
             end
         end
     elseif get(options, "no_opposing_play", nothing) == "penalty"
