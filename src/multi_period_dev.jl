@@ -260,10 +260,13 @@ function prep_data(my_data::Dict{String, Any}, options::Dict{String, Any})
     end
 
     itb = my_data["transfers"]["bank"] / 10
+    ft_base = Nothing
     if isnothing(my_data["transfers"]["limit"])
         ft = 1
+        ft_base = 1
     else
         ft = my_data["transfers"]["limit"] - my_data["transfers"]["made"]
+        ft_base = my_data["transfers"]["limit"]
     end
     ft = max(ft, 0)
 
@@ -296,6 +299,7 @@ function prep_data(my_data::Dict{String, Any}, options::Dict{String, Any})
         "price_modified_players" => price_modified_players,
         "itb" => itb,
         "ft" => ft,
+        "ft_base" => ft_base,
         "fixtures" => fixtures
     )
 end
@@ -325,6 +329,7 @@ function solve_multi_period_fpl(data, options)
     itb_value = get(options, "itb_value", 0.08)
 
     ft = get(data, "ft", 1)
+    ft_base = get(data, "ft_base",1)
     if ft <= 0
         ft = 0
     end
@@ -467,7 +472,7 @@ function solve_multi_period_fpl(data, options)
     @constraint(model, [p in initial_squad], squad[p, next_gw-1] == 1, base_name="initial_squad_players")
     @constraint(model, [p in setdiff(players,initial_squad)], squad[p, next_gw-1] == 0, base_name="initial_squad_others")
     @constraint(model, in_the_bank[next_gw-1] == itb, base_name="initial_itb")
-    @constraint(model, free_transfers[next_gw] == ft, base_name="initial_ft")
+    @constraint(model, free_transfers[next_gw] == ft * (1-use_wc[next_gw]) + ft_base * use_wc[next_gw], base_name="initial_ft")
     @constraint(model, [w in gameweeks[gameweeks .> next_gw]], free_transfers[w] >= 1, base_name="future_ft_limit")
 
     # Constraints
